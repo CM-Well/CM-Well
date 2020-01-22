@@ -52,10 +52,10 @@ object TsvRetrieverFromFile extends LazyLogging {
     }(pos => pos.toLong)
     val positionKeySink = Flow[InfotonData]
       .recover {
-        case e: Throwable => InfotonData(null, null)
+        case e: Throwable => InfotonData(null, null, -1)
       }
       .scan(linesToDrop) {
-        case (count, InfotonData(null, null)) => {
+        case (count, InfotonData(null, null, -1)) => {
           appendToPersistFile("crash at: " + count + "\n" + count.toString + "\n")
           count
         }
@@ -76,9 +76,7 @@ object TsvRetrieverFromFile extends LazyLogging {
     Source
       .fromIterator(() => scala.io.Source.fromFile(dcInfo.tsvFile.get).getLines())
       .drop {
-        logger.info(
-          s"Dropping $linesToDrop initial lines from file ${dcInfo.tsvFile.get} for sync for data center id: ${dcInfo.id} from location ${dcInfo.location}"
-        )
+        logger.info(s"Dropping $linesToDrop initial lines from file ${dcInfo.tsvFile.get} for sync ${dcInfo.key}")
         linesToDrop
       }
       .viaMat(KillSwitches.single)(Keep.right)

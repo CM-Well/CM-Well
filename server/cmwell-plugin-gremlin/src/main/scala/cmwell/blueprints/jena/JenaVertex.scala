@@ -20,7 +20,7 @@ import org.apache.jena.rdf.model._
 import com.tinkerpop.blueprints.util.{DefaultVertexQuery, StringFactory}
 import com.tinkerpop.blueprints.{Direction, Edge, Vertex, VertexQuery}
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 import scala.collection.mutable
 import Extensions._
 
@@ -41,7 +41,7 @@ class JenaVertex(model1: Model, rdfNode1: RDFNode) extends JenaElement(model1, r
           edges += edge
       }
     }
-    edges
+    edges.asJava
   }
 
   override def getVertices(direction: Direction, labels: String*): Iterable[Vertex] = {
@@ -57,7 +57,7 @@ class JenaVertex(model1: Model, rdfNode1: RDFNode) extends JenaElement(model1, r
         vertices += new JenaVertex(model, if (rdfNode == s) o else s)
       }
     }
-    vertices
+    vertices.asJava
   }
 
   override def query(): VertexQuery = new DefaultVertexQuery(this)

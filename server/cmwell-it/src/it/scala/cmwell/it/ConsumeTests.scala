@@ -85,6 +85,9 @@ class ConsumeTests extends AsyncFunSpec with Inspectors with Matchers with Helpe
     val i2 = f1.flatMap ( t => Http.get(_consume, List("position" -> t._2.get, "length-hint" -> "613", "format" -> "json", "with-data" -> "", "gqp" -> "<parentOf.rel[friendOf.rel:]")))
     val i3 = f1.flatMap ( t => Http.get(_consume, List("position" -> t._2.get, "length-hint" -> "613", "format" -> "json", "with-data" -> "", "gqp" -> ">parentOf.rel")))
     val i4 = f1.flatMap ( t => Http.get(_consume, List("position" -> t._2.get, "length-hint" -> "613", "format" -> "json", "with-data" -> "", "gqp" -> ">parentOf.rel[childOf.rel:]")))
+
+    val j1 = f1.flatMap ( t => Http.get(_consume, List("position" -> t._2.get, "length-hint" -> "613", "format" -> "ntriples", "with-data" -> "", "fields" -> "siblingOf.rel")))
+
     // scalastyle:on
     it("should ingest data to consume later") {
 
@@ -223,6 +226,15 @@ class ConsumeTests extends AsyncFunSpec with Inspectors with Matchers with Helpe
             r.status should be(200)
             r.payload.trim.lines.size should be(1)
           }
+        }
+      }
+    }
+
+    it("should mask fields when fields parameter is supplied") {
+      j1.map { r =>
+        withClue(r) {
+          r.status should be(200)
+          r.payload.trim.lines.filterNot(_.contains("/meta/sys#")).size should be(2)
         }
       }
     }

@@ -12,7 +12,8 @@ libraryDependencies ++= {
     dm("com.typesafe.akka", "akka-stream"),
     dm("com.typesafe.akka", "akka-stream-contrib"),
     dm("com.typesafe.akka", "akka-stream-testkit") % "test",
-    dm("com.typesafe.akka", "akka-stream-kafka").exclude("org.apache.kafka", "kafka-clients"),
+    dm("com.typesafe.akka", "akka-stream-kafka")
+      .exclude("org.apache.kafka", "kafka-clients"),
     dm("com.typesafe.akka", "akka-agent"),
     dm("com.typesafe.akka", "akka-slf4j"),
     dm("org.lz4", "lz4-java"),
@@ -57,7 +58,5 @@ val stopCassandraAndKafka = Def.task[Unit] {
 //    ((a doFinally b) doFinally c).value
 //  }
 //}.tag(Tags.ES,Tags.Cassandra,Tags.Grid,Tags.Kafka).value
-
-fullTest := (test in Test).value //dependsOn(fullTest in LocalProject("fts"),fullTest in LocalProject("zstore")).value
 
 unmanagedResources in Test += packResourceDir.value.keys.head / "logback.xml"

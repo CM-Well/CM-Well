@@ -17,7 +17,7 @@ package cmwell.blueprints.jena
 import org.apache.jena.rdf.model._
 import com.tinkerpop.blueprints.Element
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 import scala.collection.mutable.ListBuffer
 import Extensions._
 
@@ -44,7 +44,7 @@ abstract class JenaElement(val model: Model, val rdfNode: RDFNode) extends Eleme
   }
 
   override def getPropertyKeys: java.util.Set[String] =
-    model.listStatements(propertiesSelector).map(_.getPredicate.id.toString).toSet[String]
+    model.listStatements(propertiesSelector).asScala.map(_.getPredicate.id.toString).toSet[String].asJava
 
   override def equals(obj: Any): Boolean = {
     (obj != null) &&

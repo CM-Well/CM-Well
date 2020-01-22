@@ -40,10 +40,6 @@ import scala.util.{Failure, Success, Try}
 object Streams extends LazyLogging {
   //CONSTS
   private val fsp = FieldSortParams(List("system.indexTime" -> Asc))
-  val bo0 = scala.collection.breakOut[Seq[Infoton], ByteString, List[ByteString]]
-  val bo1 = scala.collection.breakOut[Seq[Infoton], String, List[String]]
-  val bo2 = scala.collection.breakOut[Seq[SearchThinResult], String, List[String]]
-  val bo3 = scala.collection.breakOut[Seq[Infoton], SearchThinResult, List[SearchThinResult]]
   val parallelism = math.min(cmwell.util.os.Props.os.getAvailableProcessors, Settings.cassandraBulkSize)
   val endln = ByteString(cmwell.util.os.Props.endln)
 
@@ -129,7 +125,7 @@ object Streams extends LazyLogging {
     def iterationResultsToFatInfotons(crudServiceFS: CRUDServiceFS)(implicit ec: ExecutionContext): Flow[IterationResults, Infoton, NotUsed] =
       Flow[IterationResults]
         .collect { case IterationResults(_, _, Some(iSeq), _, _) => iSeq }
-        .mapConcat(_.map(_.uuid)(bo1))
+        .mapConcat(_.view.map(_.uuid).to(List))
         .mapAsyncUnordered(parallelism){ uuid =>
           crudServiceFS.getInfotonByUuidAsync(uuid).map(_ -> uuid)
         }
@@ -356,7 +352,8 @@ class Streams @Inject()(crudServiceFS: CRUDServiceFS) extends LazyLogging {
         case infotons if infotons.isEmpty => List(Future.successful(Vector.empty[Infoton]))
         case infotons => {
           infotons
-            .map(_.uuid)(bo1)
+            .view
+            .map(_.uuid).to(List)
             .grouped(Settings.cassandraBulkSize)
             .map(crudServiceFS.getInfotonsByUuidAsync)
             .toVector
@@ -423,12 +420,13 @@ class Streams @Inject()(crudServiceFS: CRUDServiceFS) extends LazyLogging {
                   case (s, _) => {
                     val strs = s.mapConcat {
                       case IterationResults(_, _, infoptons, _, _) => {
-                        infoptons.fold(List.empty[SearchThinResult])(_.map { i =>
-                          SearchThinResult(i.path,
+                        infoptons.fold(List.empty[SearchThinResult])(_.view.map { i =>
+                          SearchThinResult(i.systemFields.path,
                                            i.uuid,
-                                           DateParser.fdf(i.lastModified),
-                                           i.indexTime.getOrElse(i.lastModified.getMillis))
-                        }(bo3))
+                                           DateParser.fdf(i.systemFields.lastModified),
+                                           lastModifiedBy = i.systemFields.lastModifiedBy,
+                                           i.systemFields.indexTime.getOrElse(i.systemFields.lastModified.getMillis))
+                        }.to(List))
                       }
                     }
                     Some(indexTime -> strs)

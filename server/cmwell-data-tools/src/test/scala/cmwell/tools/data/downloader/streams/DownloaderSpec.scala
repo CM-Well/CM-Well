@@ -28,14 +28,14 @@ import com.github.tomakehurst.wiremock.WireMockServer
 import com.github.tomakehurst.wiremock.client.WireMock
 import com.github.tomakehurst.wiremock.client.WireMock._
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration._
-import com.github.tomakehurst.wiremock.http.Fault
-import com.github.tomakehurst.wiremock.stubbing.Scenario
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
 
+import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
 
-class DownloaderSpec extends PropSpec with PropertyChecks with Matchers with BeforeAndAfterAll {
+
+class DownloaderSpec extends PropSpec with ScalaCheckPropertyChecks with Matchers with BeforeAndAfterAll {
 
   implicit val system: ActorSystem = ActorSystem("reactive-tools-system")
   implicit val mat: Materializer = ActorMaterializer()

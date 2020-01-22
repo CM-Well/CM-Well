@@ -30,6 +30,7 @@ import scala.concurrent.duration._
 import scala.util.Try
 import cmwell.util.testSuitHelpers.test.CassandraDockerSuite
 import play.api.libs.json.Json
+import domain.testUtil.InfotonGenerator.genericSystemFields
 
 
 /**
@@ -67,8 +68,8 @@ trait IRWServiceTest extends BeforeAndAfterAll with CassandraDockerSuite { this:
     // scalastyle:off
     val initCommands = Some(List(
     "CREATE KEYSPACE IF NOT EXISTS data2 WITH REPLICATION = {'class' : 'SimpleStrategy', 'replication_factor' : 1};",
-    "CREATE TABLE IF NOT EXISTS data2.Path ( path text, uuid text, last_modified timestamp, PRIMARY KEY ( path, last_modified, uuid ) ) WITH CLUSTERING ORDER BY (last_modified DESC, uuid ASC) AND compression = { 'sstable_compression' : 'LZ4Compressor' } AND caching = {'keys':'ALL', 'rows_per_partition':'1'};",
-    "CREATE TABLE IF NOT EXISTS data2.Infoton (uuid text, quad text, field text, value text, data blob, PRIMARY KEY (uuid,quad,field,value)) WITH compression = { 'sstable_compression' : 'LZ4Compressor' } AND caching = {'keys':'ALL', 'rows_per_partition':'1000'};"
+    "CREATE TABLE IF NOT EXISTS data2.Path ( path text, uuid text, last_modified timestamp, PRIMARY KEY ( path, last_modified, uuid ) ) WITH CLUSTERING ORDER BY (last_modified DESC, uuid ASC) AND compression = { 'class' : 'LZ4Compressor' } AND caching = {'keys':'ALL', 'rows_per_partition':'1'};",
+    "CREATE TABLE IF NOT EXISTS data2.Infoton (uuid text, quad text, field text, value text, data blob, PRIMARY KEY (uuid,quad,field,value)) WITH compression = { 'class' : 'LZ4Compressor' } AND caching = {'keys':'ALL', 'rows_per_partition':'1000'};"
     ))
     // scalastyle:on
     dao = Dao("Test",keyspace, container.containerIpAddress, container.mappedPort(9042), initCommands = initCommands)
@@ -88,13 +89,13 @@ trait IRWCassSpec extends AsyncFlatSpec with Matchers with IRWServiceTest {
   "bulk write and read" should "be successful" in {
 
     val data = Vector.tabulate(10) { i =>
-      ObjectInfoton("/cmt/cm/bulk-test/objinfo_" + i, "dc_test", None, Map("name" -> Set[FieldValue](FString("gal"), FString("yoav"))), None)
+      ObjectInfoton(genericSystemFields.copy(path = "/cmt/cm/bulk-test/objinfo_" + i), Map("name" -> Set[FieldValue](FString("gal"), FString("yoav"))))
     }
 
     irw.writeSeqAsync(data).flatMap { _ =>
 
       val uuids = data.map(_.uuid)
-      val paths = data.map(_.path)
+      val paths = data.map(_.systemFields.path)
       val junks = Vector("no1", "no2", "no3")
 
       val uuidsRead = irw.readUUIDSAsync(uuids).map(_.collect { case FullBox(i) => i })
@@ -145,21 +146,19 @@ trait IRWCassSpec extends AsyncFlatSpec with Matchers with IRWServiceTest {
     // scalastyle:on
     val c = new Base64().decode(content)
     val fileContent = FileContent(c, "image/png")
-    val fileInfo = FileInfoton("/irw/command-test/file_1","dc_test", Some(666L),
-      Map("name" -> Set[FieldValue](FString("gal"), FString("yoav"))) , fileContent, None)
+    val systemFields = genericSystemFields.copy(path = "/irw/command-test/file_1", indexTime = Some(666L))
+    val fileInfo = FileInfoton(systemFields, Map("name" -> Set[FieldValue](FString("gal"), FString("yoav"))) , fileContent)
 
     for {
       _ <- irw.writeAsync(fileInfo)
       cmpObjInfo <- irw.readUUIDAsync(fileInfo.uuid)
     } yield withClue(cmpObjInfo)(cmpObjInfo match {
       case FullBox(i) =>
-        i.path  should equal (fileInfo.path)
+        i.systemFields should equal (systemFields)
         i.uuid  should equal (fileInfo.uuid)
-        i.lastModified should equal (fileInfo.lastModified)
         i.fields.size should equal (fileInfo.fields.size)
-        i.indexTime should equal (Some(666L))
         i match {
-          case FileInfoton(_,_,_,_,_,c,_,_) =>
+          case FileInfoton(_,_, c) =>
             c match {
               case Some(cc) =>
                 withClue(new String(cc.data.get) + "-------------------------------------" + new String(fileContent.data.get)) {
@@ -178,83 +177,92 @@ trait IRWCassSpec extends AsyncFlatSpec with Matchers with IRWServiceTest {
   }
 
   "object utf write and read " should "be successful" in {
-    val objInfo = ObjectInfoton(
-      "/irw/utf8/objinfo_1","dc_test",
-      None,
-      Map("name" -> Set[FieldValue](FString("罗湖区南湖路国贸商业大厦28-30楼\"@ese"), FString("罗湖区南湖路国贸商业大厦30楼a、B\"@ese"))), None)
+    val sysFields = genericSystemFields.copy(path = "/irw/utf8/objinfo_1")
+    val objInfo = ObjectInfoton(sysFields,
+      Map("name" -> Set[FieldValue](FString("罗湖区南湖路国贸商业大厦28-30楼\"@ese"), FString("罗湖区南湖路国贸商业大厦30楼a、B\"@ese"))))
     for {
       _ <- irw.writeAsync(objInfo)
       cmpObjInfo <- irw.readUUIDAsync(objInfo.uuid)
     } yield withClue(cmpObjInfo)(cmpObjInfo match {
       case FullBox(i) =>
-        i.path  should equal (objInfo.path)
+        i.systemFields should equal (sysFields)
         i.uuid  should equal (objInfo.uuid)
-        i.lastModified should equal (objInfo.lastModified)
         i.fields.size should equal (objInfo.fields.size)
       case _ => assert(false)
     })
   }
 
   "object write and read" should "be successful" in {
-    val objInfo = ObjectInfoton("/irw/command-test/objinfo_1", "dc_test", None, Map("name" -> Set[FieldValue](FString("gal"), FString("yoav"))), None)
+    val sysFields = genericSystemFields.copy(path = "/irw/command-test/objinfo_1")
+    val objInfo = ObjectInfoton(sysFields, Map("name" -> Set[FieldValue](FString("gal"), FString("yoav"))))
 
     val f1 = for {
       _ <- irw.writeAsync(objInfo)
       cmpObjInfo <- irw.readUUIDAsync(objInfo.uuid)
-      cmpByPathObjInfo <- irw.readPathAsync(objInfo.path)
+      cmpByPathObjInfo <- irw.readPathAsync(objInfo.systemFields.path)
     } yield withClue((cmpObjInfo, cmpByPathObjInfo)) {
 
       val FullBox(i) = cmpObjInfo
-      i.path should equal(objInfo.path)
+      i.systemFields should equal(objInfo.systemFields)
       i.uuid should equal(objInfo.uuid)
-      i.lastModified should equal(objInfo.lastModified)
       i.fields.size should equal(objInfo.fields.size)
 
       val FullBox(j) = cmpByPathObjInfo
-      j.path should equal(objInfo.path)
+      j.systemFields should equal(objInfo.systemFields)
       j.uuid should equal(objInfo.uuid)
-      j.lastModified should equal(objInfo.lastModified)
       j.fields.size should equal(objInfo.fields.size)
     }
 
 
-    val objInfo_v2 = ObjectInfoton(
-      "/irw/command-test/objinfo_1",
-      "dc_test",
-      None,
-      Map("name" -> Set[FieldValue](FString("gal"), FString("yoav"), FString("rony"))),
-      None)
-
+    val objInfo_v2 = ObjectInfoton(sysFields.copy(lastModified = sysFields.lastModified.plus(5L) ),
+      Map("name" -> Set[FieldValue](FString("gal"), FString("yoav"), FString("rony"))))
     val f2 = for {
       _ <- f1
       _ <- irw.writeAsync(objInfo_v2)
-      cmpObjInfo_v2 <- irw.readUUIDAsync(objInfo_v2.uuid)
-      cmpByPathObjInfo_v2 <- irw.readPathAsync(objInfo_v2.path)
+      cmpObjInfo_v2 <- cmwell.util.concurrent.spinCheck(100.millis, true, 3.minutes)(irw.readUUIDAsync(objInfo_v2.uuid)) {
+        case FullBox(i) => (i.systemFields == objInfo_v2.systemFields) && (i.uuid == objInfo_v2.uuid) && (i.fields.size == objInfo_v2.fields.size)
+        case _ => false
+      }
+      cmpByPathObjInfo_v2 <- cmwell.util.concurrent.spinCheck(100.millis, true, 3.minutes)(irw.readPathAsync(objInfo_v2.systemFields.path)) {
+        case FullBox(i) => (i.systemFields == objInfo_v2.systemFields) && (i.uuid == objInfo_v2.uuid) && (i.fields.size === objInfo_v2.fields.size)
+        case _ => false
+      }
     } yield withClue((cmpObjInfo_v2, cmpByPathObjInfo_v2)) {
 
       val FullBox(i) = cmpObjInfo_v2
-      i.path should equal(objInfo_v2.path)
+      i.systemFields should equal(objInfo_v2.systemFields)
       i.uuid should equal(objInfo_v2.uuid)
-      i.lastModified should equal(objInfo_v2.lastModified)
       i.fields.size should equal(objInfo_v2.fields.size)
 
       val FullBox(j) = cmpByPathObjInfo_v2
-      j.path should equal(objInfo_v2.path)
+      j.systemFields should equal(objInfo_v2.systemFields)
       j.uuid should equal(objInfo_v2.uuid)
-      j.lastModified should equal(objInfo_v2.lastModified)
       j.fields.size should equal(objInfo_v2.fields.size)
     }
 
     f2.flatMap { _ =>
+      //checking Async version
       val vecSizeTry = Try {
         // lets check history method
-        val vec = irw.history(objInfo.path, 100000)
-        vec.size
+        val vec = irw.historyAsync(objInfo.systemFields.path, 100000)
+        vec.map(_.size)
       }
 
       withClue(vecSizeTry.transform(i => Try(s"got $i"), e => Try(stackTraceToString(e)))) {
         vecSizeTry.isSuccess should be(true)
-        vecSizeTry.get should equal(2)
+        vecSizeTry.get.map(_ should equal(2))
+      }
+
+      //checking Sync version
+      val vecSizeTry2 = Try {
+        // lets check history method
+        val vec = irw.history(objInfo.systemFields.path, 100000)
+        vec.size
+      }
+
+      withClue(vecSizeTry2.transform(i => Try(s"got $i"), e => Try(stackTraceToString(e)))) {
+        vecSizeTry2.isSuccess should be(true)
+        vecSizeTry2.get should equal(2)
       }
     }
   }
@@ -264,7 +272,7 @@ trait IRWCassSpec extends AsyncFlatSpec with Matchers with IRWServiceTest {
       s"field$n" -> Set[FieldValue](FString(s"value$n"))
     }.toMap
 
-    val fatFoton = ObjectInfoton("/irw/xyz/fatfoton1", "dc_test", None, lotsOfFields, None)
+    val fatFoton = ObjectInfoton(genericSystemFields.copy(path = "/irw/xyz/fatfoton1"), lotsOfFields)
     irw.writeAsync(fatFoton).flatMap{_ =>
       cmwell.util.concurrent.spinCheck(100.millis, true)(irw.readPathAsync("/irw/xyz/fatfoton1")) {
           case FullBox(readInfoton) => readInfoton == fatFoton
@@ -281,7 +289,7 @@ trait IRWCassSpec extends AsyncFlatSpec with Matchers with IRWServiceTest {
 
   "object write and update indexTime" should "be successful" in {
     import scala.concurrent.duration._
-    val objInfo = ObjectInfoton("/irw/command-test/JohnSmith","dc_test", None, Map("status" -> Set[FieldValue](FString("R.I.P"))), None)
+    val objInfo = ObjectInfoton(genericSystemFields.copy(path = "/irw/command-test/JohnSmith"), Map("status" -> Set[FieldValue](FString("R.I.P"))))
     val idxT = 1234567891011L
 
     for {
@@ -289,7 +297,7 @@ trait IRWCassSpec extends AsyncFlatSpec with Matchers with IRWServiceTest {
       _ <- irw.addIndexTimeToUuid(objInfo.uuid, idxT)
       x <- irw.readUUIDAsync(objInfo.uuid)
     } yield withClue(x)(x match {
-      case FullBox(i) => i.indexTime should equal (Some(idxT))
+      case FullBox(i) => i.systemFields.indexTime should equal (Some(idxT))
       case _ => fail("could not retrieve infoton from IRW")
     })
   }

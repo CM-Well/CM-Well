@@ -75,17 +75,4 @@ package object json {
     """.stripMargin.filterNot(_.isWhitespace).format(infotonsTemplate(infotonsMap))
   }
 
-  /**
-    * takes an infotons map, and returns a stream of bulk requests, where each request is of maximun bulkSize of infotons
-    * @param infotonsMap
-    * @param bulkSize
-    * @return
-    */
-  def mapToBulkStream(infotonsMap: Map[String, Map[String, Set[String]]], bulkSize: Int): Stream[String] = {
-    if (infotonsMap.isEmpty) Stream.Empty
-    else {
-      val curr = infotonsMap.take(bulkSize)
-      infotonsMapToBulkJson(curr) #:: mapToBulkStream(infotonsMap.filterKeys(p => !curr.keySet.contains(p)), bulkSize)
-    }
-  }
 }

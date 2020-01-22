@@ -68,12 +68,13 @@ object Runner extends LazyLogging {
         val neighborhoodPartitions = (partition to partition+2) map (_ % numOfPartitions)
 
         val basicServiceTypes = ServiceTypes()
+/*NOTE: ZkUtils was removed from newer versions of Kafka. Also, this class never actually worked so it's not a regression to remove it.
           .add("KafkaMonitor",
             classOf[KafkaMonitorActor],
             zkServers,
             15 * 60 * 1000L,
             concurrent.ExecutionContext.Implicits.global)
-
+*/
         neighborhoodPartitions.foldLeft(basicServiceTypes) { (st,par) =>
           st.add(s"BGActor$par", classOf[CMWellBGActor], par,
             config.withValue("cmwell.bg.persist.commands.partition", ConfigValueFactory.fromAnyRef(par))

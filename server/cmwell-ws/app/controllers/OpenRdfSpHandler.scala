@@ -45,7 +45,7 @@ import org.openrdf.rio.turtle.TurtleWriter
 import org.openrdf.sail.memory.model._
 import org.openrdf.sail.{Sail, SailConnection, SailException, UpdateContext}
 import org.openrdf.{IsolationLevel, IsolationLevels, OpenRDFException}
-import play.api.mvc.{Action, Controller, InjectedController, Result}
+import play.api.mvc.{Action, InjectedController, Result}
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
@@ -85,9 +85,6 @@ class OpenRdfSpHandler @Inject()(crudServiceFS: CRUDServiceFS, cmwellRDFHelper: 
           case t: IllegalArgumentException => BadRequest(t.getMessage)
           case _                           => InternalServerError("Unknown error occurred")
         }
-
-      case Success(_) =>
-        Future.successful(BadRequest("Unsupported query"))
 
       case Failure(t) if t.isInstanceOf[MalformedQueryException] =>
         Future.successful(BadRequest(t.getMessage))
@@ -158,7 +155,7 @@ class CmWellSailRepositoryConnection(cmWellReadOnlySailConnection: CmWellReadOnl
     extends SailRepositoryConnection(new SailRepository(cmWellReadOnlySail), cmWellReadOnlySailConnection)
 
 class CmWellReadOnlySail(cmWellReadOnlySailConnection: CmWellReadOnlySailConnection) extends Sail {
-  import scala.collection.JavaConversions._
+  import scala.collection.JavaConverters._
 
   override def isWritable: Boolean = false
 
@@ -175,7 +172,7 @@ class CmWellReadOnlySail(cmWellReadOnlySailConnection: CmWellReadOnlySailConnect
   }
 
   override def getDefaultIsolationLevel: IsolationLevel = IsolationLevels.NONE
-  override def getSupportedIsolationLevels: util.List[IsolationLevel] = Seq(IsolationLevels.NONE)
+  override def getSupportedIsolationLevels: util.List[IsolationLevel] = Seq(getDefaultIsolationLevel).asJava
 
   override def getDataDir: File = null
   override def setDataDir(dataDir: File): Unit = {}
@@ -267,7 +264,7 @@ class CmWellTripleSource(tripleStore: TripleStore)(implicit ec: ExecutionContext
                        pred: IRI,
                        obj: Value,
                        contexts: Resource*): CloseableIteration[_ <: Statement, OpenRDFException] = {
-    import scala.collection.JavaConversions._
+    import scala.collection.JavaConverters._
 
     // todo levarage metadata to use cache or such
     //    subj match {
@@ -287,7 +284,7 @@ class CmWellTripleSource(tripleStore: TripleStore)(implicit ec: ExecutionContext
                                   SesameExtensions.valueToSesameValue(q.value))
       )
 
-    new CloseableIteratorIteration(statementsIterator)
+    new CloseableIteratorIteration(statementsIterator.asJava)
   }
 
   override def getValueFactory: ValueFactory = new MemValueFactory

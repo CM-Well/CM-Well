@@ -99,7 +99,7 @@ class NSBackwardCompTests extends AsyncFunSpec with Matchers with Helpers with f
           else
             Json.parse(res.payload).transform(fieldsSorter andThen (__ \ 'fields).json.pick).get == johnSmithExpectedJson
         }}.map{
-          res => Json.parse(res.payload).transform(fieldsSorter andThen (__ \ 'fields).json.pick).get shouldEqual johnSmithExpectedJson}.flatMap {_ =>
+        res => Json.parse(res.payload).transform(fieldsSorter andThen (__ \ 'fields).json.pick).get shouldEqual johnSmithExpectedJson}.flatMap {_ =>
         spinCheck(100.millis, true)(
           Http.get(cmw / "www.example.net" / "Addresses" / "c9ca3047", List("format" -> "json"))){ res =>
           Json.parse(res.payload).transform(fieldsSorter andThen (__ \ 'fields).json.pick).get == addressExpectedJson
@@ -124,6 +124,7 @@ class NSBackwardCompTests extends AsyncFunSpec with Matchers with Helpers with f
         "system" -> Json.obj(
           "uuid" -> "b83ca6ce7ee546c2136b6f30ddc1e75a",
           "lastModified" -> "2015-07-03T22:09:03.780Z",
+          "lastModifiedBy" -> "pUser",
           "path" -> "/data.thomsonreuters.com/4-bd6d205c9e5f926f5f1b64ced180d1b3b7d7d4bae4632588d885c4e70585c00b",
           "dataCenter" -> dcName,
           "parent" -> "/data.thomsonreuters.com"),
@@ -276,6 +277,7 @@ class NSBackwardCompTests extends AsyncFunSpec with Matchers with Helpers with f
              |{
              |  "type":"ObjectInfoton",
              |  "system":{
+             |    "lastModifiedBy":"pUser",
              |    "path":"/clearforest.com/pe/VP",
              |    "parent":"/clearforest.com/pe",
              |    "dataCenter" : "$dcName"
@@ -304,6 +306,7 @@ class NSBackwardCompTests extends AsyncFunSpec with Matchers with Helpers with f
                                      |{
                                      |  "type":"ObjectInfoton",
                                      |  "system":{
+                                     |    "lastModifiedBy":"pUser",
                                      |    "path":"/meta/ns/$hash",
                                      |    "parent":"/meta/ns",
                                      |    "dataCenter":"$dcName"
@@ -344,7 +347,8 @@ class NSBackwardCompTests extends AsyncFunSpec with Matchers with Helpers with f
 
       //CONSTS
       val i1 = Json.obj("type" -> "ObjectInfoton",
-        "system" -> Json.obj("path" -> "/www.example.net/Addresses/c9ca3047",
+        "system" -> Json.obj("lastModifiedBy" -> "pUser",
+          "path" -> "/www.example.net/Addresses/c9ca3047",
           "parent" -> "/www.example.net/Addresses",
           "protocol" -> "http",
           "dataCenter" -> dcName),
@@ -355,7 +359,8 @@ class NSBackwardCompTests extends AsyncFunSpec with Matchers with Helpers with f
           "NOTE.vcard" -> Json.arr("1st note","some other note","note to self"),
           "STREET-ADDRESS.vcard" -> Json.arr("123 Main St.")))
       val i2 = Json.obj("type" -> "ObjectInfoton",
-        "system" -> Json.obj("path" -> "/www.example.net/Individuals/JohnSmith",
+        "system" -> Json.obj("lastModifiedBy" -> "pUser",
+          "path" -> "/www.example.net/Individuals/JohnSmith",
           "parent" -> "/www.example.net/Individuals",
           "protocol" -> "http",
           "dataCenter" -> dcName),

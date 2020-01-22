@@ -36,6 +36,14 @@ CM-Well's management of infoton updates and storage is complex and involves seve
 
 ## Hardware Architecture and the Subdivision Concept
 
+### Modules Using the Subdivision Concept
+
+For certain modules that require large amounts of memory, we use a "subdivision concept" to assign different disks on the same machine to different JVMs. The subdivision concept was previously applied to both CAS modules and ES modules. Now, due to improvements to Cassandra that include the ability to manage several disks and to manage off-heap memory (and also due to the improved G1GC mode of JVM garbage collection), the sub-division concept is applied only to ES and not to CAS.
+
+The subdivision approach is not used for the WS and BG modules. These two processes use reactive patterns to drive best performance without requiring multiple JVMs (effective thread-pools, reactive & delegation to other components).
+
+### Motivation for the Subdivision Concept
+
 The initial CM-Well hardware design was based on commodity hardware, i.e. using many pizza-box machines, each with 2-3 drives, one 4-core CPU and 16GB to 32GB RAM.
 
 The current setup uses bigger machines (Hadoop stereotype: 12 JBOD disks, 2 8-core CPUs -> 32-hyperthreaded core, 256GB RAM).
@@ -43,7 +51,7 @@ The current setup uses bigger machines (Hadoop stereotype: 12 JBOD disks, 2 8-co
 Most JVMs do not effectively use big heaps (with the exception of the expensive Azul Zing JVM), and are prone to critical error situations when they fail to do so. Therefore, for CM-Well we prefer to deploy multiple JVMs of moderate memory size (e.g. 8-16GB), while properly tuning the JVM memory parameters so as to minimize expensive garbage collection operations in "old generation" memory.
 
 Given the conditions above, there is a gap between the hardware capabilities of the powerful machines and the limitations of the JVMs we run on them. To address this gap, we use "subdivisions" of the machines to maximally utilize their performance. Several JVM instances ("logical nodes") are spawned on each physical machine.  Each JVM is attached to its own set of 2 disks, thus minimizing resource contention and maximizing utilization.
-The subdivision (i.e. multiple instances) approach is used for the ES, CAS and will be used for future analytics JVMs. It is not used for the WS and BG modules. These two processes use reactive patterns to drive best performance without requiring multiple JVMs (effective thread-pools, reactive & delegation to other components).
+
 Since faults may happen at the machine level, the storage layers (ES and CAS) are configured such that they treat the physical machine as a rack, so as not to have all data replicas stored onto the same machine, but rather to spread them across "virtual racks", i.e. physical machines.
 
 ## Resilience and Self-Healing

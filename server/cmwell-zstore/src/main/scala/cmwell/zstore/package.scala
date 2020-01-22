@@ -15,7 +15,7 @@
 package cmwell
 
 import cmwell.driver.DaoExecution
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 import scala.concurrent.{ExecutionContext, Future}
 
 /**
@@ -31,7 +31,7 @@ package object zstore {
         implicit val daoProxy = zsImpl.daoProxy
         val l: java.lang.Integer = Math.min(limit, lsHardLimit)
         val stmt = prepare("select distinct uzid from data2.zstore limit ?").bind(l)
-        executeAsyncInternal(stmt).map(_.all().map(_.getString("uzid")).toSeq)
+        executeAsyncInternal(stmt).map(_.all().asScala.map(_.getString("uzid")).toSeq)
 
       case zsMem: ZStoreMem =>
         Future.successful(zsMem.keySet.toSeq)

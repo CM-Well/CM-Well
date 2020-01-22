@@ -20,7 +20,6 @@ import akka.actor.Actor
 import akka.actor.Actor.Receive
 import akka.pattern.ask
 import k.grid._
-import k.grid.monitoring.GridMonitor
 import k.grid.service.LocalServiceManager
 import k.grid.service.messages.{RegisterServices, ServiceInstantiationRequest}
 import scala.concurrent.Future

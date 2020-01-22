@@ -51,16 +51,16 @@ class AtomFormatter private (reqHost: String,
 
   private[this] val fillInfotonEntry: (Entry, Infoton) => Entry = withDataFormatter match {
     case Some(formatter) => { (entry, i) =>
-      entry.setTitle(i.path)
+      entry.setTitle(i.systemFields.path)
       val content = entry.setContent(formatter.render(i))
       content.setMimeType(formatter.mimetype)
-      entry.setId(s"$host${i.path}")
-      entry.setUpdated(i.lastModified.toDate)
+      entry.setId(s"$host${i.systemFields.path}")
+      entry.setUpdated(i.systemFields.lastModified.toDate)
       entry
     }
     case None => { (entry, i) =>
-      entry.setTitle(i.path)
-      entry.addLink(s"$host${i.path}", "alternate").setMimeType("text/html")
+      entry.setTitle(i.systemFields.path)
+      entry.addLink(s"$host${i.systemFields.path}", "alternate").setMimeType("text/html")
       entry.addLink(s"$host/ii/${i.uuid}", "alternate").setMimeType("text/html")
 //      entry.addLink(s"/ii/${i.uuid}/format=json", "alternate").setMimeType("application/json")
 //      entry.addLink(s"/ii/${i.uuid}/format=jsonld", "alternate").setMimeType("application/ld+json")
@@ -70,8 +70,8 @@ class AtomFormatter private (reqHost: String,
 //      entry.addLink(s"/ii/${i.uuid}/format=turtle", "alternate").setMimeType("text/turtle")
 //      entry.addLink(s"/ii/${i.uuid}/format=rdfxml", "alternate").setMimeType("application/rdf+xml")
 //      entry.addLink(s"/ii/${i.uuid}/format=yaml", "alternate").setMimeType("text/yaml")
-      entry.setId(i.path)
-      entry.setUpdated(i.lastModified.toDate)
+      entry.setId(i.systemFields.path)
+      entry.setUpdated(i.systemFields.lastModified.toDate)
       entry
     }
   }
@@ -113,7 +113,7 @@ class AtomFormatter private (reqHost: String,
   private def infotonHistoryVersions(ihv: InfotonHistoryVersions)(implicit feed: Feed): Feed = {
     feed.setTitle("Infoton's History")
     feed.setSubtitle(
-      s"Showing ${ihv.versions.headOption.map(_.path).getOrElse("N/A")} history: ${ihv.versions.size} historical results found."
+      s"Showing ${ihv.versions.headOption.map(_.systemFields.path).getOrElse("N/A")} history: ${ihv.versions.size} historical results found."
     )
     feed.setId(uri)
     val x: FOMExtensibleElement = feed.addExtension(OpenSearchConstants.OPENSEARCH_NS,
@@ -121,7 +121,7 @@ class AtomFormatter private (reqHost: String,
                                                     OpenSearchConstants.OS_PREFIX)
     x.setText(ihv.versions.size.toString)
     ihv.versions.foreach { i =>
-      fillInfotonEntry(feed.addEntry(), i).setId(s"${i.path}#${i.uuid}")
+      fillInfotonEntry(feed.addEntry(), i).setId(s"${i.systemFields.path}#${i.uuid}")
     }
     feed
   }

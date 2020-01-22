@@ -16,27 +16,28 @@
 
 package cmwell.fts
 
+import java.util.concurrent.Executors
+
 import cmwell.common.formats.JsonSerializerForES
 import cmwell.domain._
-import cmwell.util.build.BuildInfo
-import com.typesafe.scalalogging.{LazyLogging, Logger}
-import org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest
+import com.typesafe.scalalogging.LazyLogging
 import org.elasticsearch.client.Requests
-import org.elasticsearch.common.unit.TimeValue
 import org.elasticsearch.common.xcontent.XContentType
-import org.joda.time.DateTime
+import org.joda.time.{DateTime, DateTimeZone}
 import org.joda.time.format.DateTimeFormat
 import org.scalatest._
 
-import scala.concurrent.Await
+import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
-import scala.io.Source
+import domain.testUtil.InfotonGenerator.genericSystemFields
 
 /**
  * User: Israel
  * Date: 11/18/12
  * Time: 6:15 PM
  */
+
+// !!!!!!!!!! REMOVE INFOCLONE ANYWHERE IN THIS FILE. TYPE IS DEPRECATED !!!!!!!!!!!
 
 //sealed trait FTSMixin extends BeforeAndAfterAll { this: Suite =>
 //  def ftsService: FTSServiceOps
@@ -103,7 +104,7 @@ import scala.io.Source
 trait FTSServiceTestTrait extends BeforeAndAfterAll with LazyLogging{ this: Suite =>
   var ftsService:FTSService = _
 //  var embeddedElastic:EmbeddedElastic = _
-  implicit val executionContext =  scala.concurrent.ExecutionContext.global
+  implicit val executionContext =  ExecutionContext.fromExecutor(Executors.newWorkStealingPool(10))
   implicit val loger = logger
 
   override protected def beforeAll() {
@@ -135,8 +136,13 @@ trait FTSServiceTestTrait extends BeforeAndAfterAll with LazyLogging{ this: Suit
   def refreshAll() = ftsService.client.admin().indices().prepareRefresh().execute().actionGet()
 
   val testIndexName = "cm_well_p0_0"
-  def getUUID(uuid:String) = ftsService.client.prepareGet(testIndexName,"infoclone", uuid).execute().actionGet()
-
+  def getUUID(uuid:String) = ftsService
+    .client
+    .prepareGet()
+    .setIndex(testIndexName)
+    .setId(uuid)
+    .execute()
+    .actionGet()
 }
 
 class FTSServiceEsSpec extends FlatSpec with Matchers with FTSServiceTestTrait with LazyLogging{
@@ -184,11 +190,12 @@ class FTSServiceEsSpec extends FlatSpec with Matchers with FTSServiceTestTrait w
 //    }
 //  }
 
+  val dateTimeAsMillies = (new DateTime(DateTimeZone.UTC)).getMillis
   val bulkInfotons = Seq.tabulate(500){ i =>
-    val infoton = ObjectInfoton("/fts-test/bulk1/info" + i, "dc_test", Some(System.currentTimeMillis()),
-      Map("name" + i -> Set[FieldValue](FString("value" + i), FString("another value" + i))), Some("http"))
+    val infoton = ObjectInfoton(genericSystemFields.copy(path = s"/fts-test/bulk1/info$i", indexTime = Some(dateTimeAsMillies)),
+      Map("name" + i -> Set[FieldValue](FString("value" + i), FString("another value" + i))))
     ESIndexRequest(
-      Requests.indexRequest(testIndexName).`type`("infoclone").id(infoton.uuid).create(true)
+      Requests.indexRequest(testIndexName).id(infoton.uuid).create(true)
         .source(JsonSerializerForES.encodeInfoton(infoton), XContentType.JSON),
       None
     )

@@ -20,7 +20,7 @@ import akka.actor._
 import akka.actor.Actor.Receive
 import akka.util.Timeout
 import cmwell.ctrl.config.Jvms
-import cmwell.domain.{FileContent, FileInfoton, VirtualInfoton}
+import cmwell.domain.{FileContent, FileInfoton, SystemFields, VirtualInfoton}
 import com.typesafe.scalalogging.LazyLogging
 import k.grid.Grid
 import akka.pattern.{ask, pipe}
@@ -31,7 +31,8 @@ import play.api.mvc.{AnyContent, Request, Result}
 import scala.concurrent.{Await, Future}
 import scala.concurrent.duration._
 import cmwell.util.concurrent.successes
-import cmwell.util.string.{dateStringify, Base64}
+import cmwell.util.string.{Base64, dateStringify}
+import cmwell.ws.Settings
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.language.postfixOps
@@ -116,7 +117,8 @@ object RequestMonitor extends LazyLogging {
             ).get
         }
         .mkString("\n\n\n")
-      Some(VirtualInfoton(FileInfoton(path, dc, None, content = Some(FileContent(bd.getBytes, "text/x-markdown")), protocol = None)))
+      Some(VirtualInfoton(FileInfoton(SystemFields(path, new DateTime(DateTimeZone.UTC), "VirtualInfoton", dc, None, "", "http"),
+        None, content = Some(FileContent(bd.getBytes, "text/x-markdown")))))
     }
     res
   }

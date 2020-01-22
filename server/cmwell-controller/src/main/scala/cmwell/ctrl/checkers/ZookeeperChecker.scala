@@ -78,18 +78,20 @@ object ZookeeperChecker extends Checker with LazyLogging {
     akka.pattern.after(7.seconds, system.scheduler)(Future.successful(p.trySuccess(())))
     val scheduleFuture = p.future.map(Left.apply)
     val responseFuture = futureByteString.map(Right.apply)
-    Future.firstCompletedOf[Either[Unit, ByteString]](List(scheduleFuture, responseFuture)).onSuccess {
-      case Left(_) =>
+    Future.firstCompletedOf[Either[Unit, ByteString]](List(scheduleFuture, responseFuture)).onComplete {
+      case Success(Left(_)) =>
         logger
           .warn("Zookeeper: timeout checking state. Cancelling check. It will be checked again on next scheduled check")
         killSwitch.abort(new TimeoutException("Zookeeper server didn't respond in time"))
+      case _ =>
     }
-    scheduleFuture.onFailure {
-      case err =>
+    scheduleFuture.onComplete {
+      case Failure(err) =>
         // scalastyle:off
         logger.warn(s"Zookeeper: $err occurred in status checker timeout scheduler. Cancelling check (only if it didn't finish already). It will be checked again on next scheduled check")
         // scalastyle:on
         killSwitch.abort(new TimeoutException("Zookeeper error occurred in status checker timeout scheduler and server didn't respond in time"))
+      case _ =>
     }
     futureByteString.map(_.utf8String)
   }

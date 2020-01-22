@@ -17,14 +17,14 @@
 package cmwell.util.algorithms.test
 
 import cmwell.util.algorithms.{UFNode, UnionFind}
-import org.scalatest.prop.PropertyChecks
+import org.scalatestplus.scalacheck.ScalaCheckPropertyChecks
 import org.scalatest.{Matchers, PropSpec}
 
 /**
   * Created by yaakov on 3/2/17.
   */
 // format: off
-class AlgorithmsSpec extends PropSpec with PropertyChecks with Matchers {
+class AlgorithmsSpec extends PropSpec with ScalaCheckPropertyChecks with Matchers {
   /*
      * Test case:
      *
