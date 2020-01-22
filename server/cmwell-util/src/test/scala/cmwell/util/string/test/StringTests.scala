@@ -12,7 +12,6 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
-
 package cmwell.util.string.test
 
 import java.io.{ByteArrayInputStream, InputStream}
@@ -63,4 +62,35 @@ class StringTests extends FunSpec with Matchers {
     }
   }
 
+  describe("string sanitizer should") {
+    it("interpolate the reference strings") {
+      val (a, b, c) = ("a", "b", "c")
+
+      val referenceStrings = Array(
+        (san"1 $a 2 $b 3 $c", s"1 $a 2 $b 3 $c"), // starts with a string, ends with an arg
+        (san"1 $a 2 $b 3", s"1 $a 2 $b 3"), // starts with a string, ends with a string
+        (san"$a 2 $b 3 $c", s"$a 2 $b 3 $c"), // starts with an arg, ends with an arg
+        (san"$a 2 $b 3 $c 4", s"${a} 2 ${b} 3 ${c} 4") // starts with an arg, ends with a string
+      )
+
+      referenceStrings.foreach {
+        case ((interpolated, expected)) =>
+          interpolated should be(expected)
+      }
+    }
+
+    it("sanitize the reference strings") {
+      val (z, b, t, p) = ('\u0000', '\b', '\t', "%")
+
+      val referenceStrings = Array(
+        (san"$z z $b b $t t $p p", "\\0 z \\b b \\t t \\% p"),
+        (san"$z$b$t t ${p}", "\\0\\b\\t t \\%")
+      )
+
+      referenceStrings.foreach {
+        case ((interpolated, expected)) =>
+          interpolated should be(expected)
+      }
+    }
+  }
 }

@@ -308,25 +308,24 @@ package object string extends LazyLogging {
     }
   }
 
-  // Purpose of `sanitizeLogLine` is to avoid "CRLF Injection" Vulnerability, as suggested by VeraCode (Static Code Analysis)
-  // TODO 0. Remove invocations of this method and use SafeLazyLogging (see below) everywhere
-  // TODO 1. Encapsulate this method in a SafeLazyLogging trait
-  // TODO 2. Make it more efficient...
-  // TODO 3. Alternatively, achieve same result using Log4J Filter or such
   def sanitizeLogLine(line: String): String = line.flatMap { c =>
-    c.toInt match {
-      case 0x00 => "\\0"
-      case 0x08 => "\\b"
-      case 0x09 => "\\t"
-      case 0x0a => "\\n"
-      case 0x0d => "\\r"
-      case 0x1a => "\\Z"
-      case 0x22 => "\\\""
-      case 0x25 => "\\%"
-      case 0x27 => "\\'"
-      case 0x5c => "\\\\"
-      case 0x5f => "\\_"
-      case _ => c.toString
+    c match {
+      case '\u0000' => "\\0"
+      case '\b'     => "\\b"
+      case '\t'     => "\\t"
+      case '\n'     => "\\n"
+      case '\r'     => "\\r"
+      //      case 0x1a => "\\Z" // not sure about this case
+      case '"'  => "\\\""
+      case '%'  => "\\%"
+      case '\'' => "\\'"
+      case '\\' => "\\\\"
+      case '_'  => "\\_"
+      case _    => c.toString
     }
+  }
+
+  implicit class Sanitize(val sc: StringContext) extends AnyVal {
+    def san(args: Any*): String = sanitizeLogLine(sc.s(args: _*))
   }
 }
