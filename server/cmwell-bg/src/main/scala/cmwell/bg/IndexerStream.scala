@@ -18,11 +18,12 @@ import java.nio.charset.StandardCharsets
 
 import akka.NotUsed
 import akka.actor.{ActorRef, ActorSystem}
+import akka.event.Logging
 import akka.kafka.scaladsl.Consumer
 import akka.kafka.{ConsumerSettings, Subscriptions}
 import akka.stream.ActorAttributes.supervisionStrategy
 import akka.stream.scaladsl.{Broadcast, Flow, GraphDSL, Keep, Merge, MergePreferred, Partition, RunnableGraph, Sink}
-import akka.stream.{ActorMaterializer, ClosedShape, KillSwitches, Supervision}
+import akka.stream.{ActorMaterializer, Attributes, ClosedShape, KillSwitches, Supervision}
 import cmwell.common.formats.JsonSerializerForES
 import cmwell.common.formats.{BGMessage, CompleteOffset, Offset}
 import cmwell.fts._
@@ -39,12 +40,13 @@ import com.typesafe.scalalogging.{LazyLogging, Logger}
 import nl.grons.metrics4.scala.{Counter, DefaultInstrumented, Histogram, Timer}
 import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.serialization.ByteArrayDeserializer
-import org.elasticsearch.action.ActionRequest
+import org.elasticsearch.action.{ActionRequest, DocWriteRequest}
 import org.elasticsearch.action.update.UpdateRequest
 import org.elasticsearch.client.Requests
 import org.slf4j.LoggerFactory
 import com.codahale.metrics.{Counter => DropwizardCounter, Histogram => DropwizardHistogram, Timer => DropwizardTimer}
 import org.apache.kafka.clients.consumer.ConsumerConfig
+import org.elasticsearch.common.xcontent.XContentType
 
 import collection.JavaConverters._
 import scala.concurrent.duration._
@@ -57,7 +59,7 @@ import scala.util.{Failure, Success, Try}
 class IndexerStream(partition: Int,
                     config: Config,
                     irwService: IRWService,
-                    ftsService: FTSServiceNew,
+                    ftsService: FTSService,
                     zStore: ZStore,
                     offsetsService: OffsetsService,
                     bgActor: ActorRef)(implicit actorSystem: ActorSystem,
@@ -81,6 +83,7 @@ class IndexerStream(partition: Int,
   val maxAggregatedWeight = config.getInt("cmwell.bg.maxAggWeight")
   val esActionsBulkSize = config.getInt("cmwell.bg.esActionsBulkSize") // in bytes
   val esActionsGroupingTtl = config.getInt("cmwell.bg.esActionsGroupingTtl") // ttl for bulk es actions grouping in ms
+  val esActionsParallelism = config.getInt("cmwell.bg.esActionsParallelism")
 
   /** *** Metrics *****/
   val existingMetrics = metricRegistry.getMetrics.asScala
@@ -235,11 +238,11 @@ class IndexerStream(partition: Int,
                                           indexName: String): Try[InfoAction] = {
               Try {
                 val indexTime =
-                  if (infoton.indexTime.isDefined) None
+                  if (infoton.systemFields.indexTime.isDefined) None
                   else Some(System.currentTimeMillis())
                 val infotonWithUpdatedIndexTime =
                   if (indexTime.isDefined)
-                    infoton.replaceIndexTime(indexTime.get)
+                    infoton.replaceIndexTime(indexTime)
                   else
                     infoton
                 val serializedInfoton =
@@ -248,13 +251,12 @@ class IndexerStream(partition: Int,
                     isCurrent
                   )
 
-                val indexRequest: ActionRequest[_ <: ActionRequest[_ <: AnyRef]] =
+                val indexRequest: DocWriteRequest[_] =
                   Requests
                     .indexRequest(indexName)
-                    .`type`("infoclone")
                     .id(infoton.uuid)
                     .create(true)
-                    .source(serializedInfoton)
+                    .source(serializedInfoton, XContentType.JSON)
                 logger.debug(
                   s"creating es actions for indexNewInfotonCommand: $indexRequest"
                 )
@@ -269,16 +271,29 @@ class IndexerStream(partition: Int,
               }
             }
 
+            implicit val log = Logging(actorSystem.eventStream, "debug.indexerStream")
+            val logAttr = Attributes.logLevels(
+              onElement = Attributes.LogLevels.Info,
+              onFailure = Attributes.LogLevels.Info,
+              onFinish = Attributes.LogLevels.Info)
+            def idxCmdStr[T](bgMessage: BGMessage[T])(convertToIdxCmd: T => IndexCommand) = {
+              val idxCmd = convertToIdxCmd(bgMessage.message)
+              s"path:[${idxCmd.path}]. offsets: [${bgMessage.offsets}]"
+            }
+
             val mergePrefferedSources =
               builder.add(MergePreferred[BGMessage[IndexCommand]](1, true))
 
-            val convertToIndexerCommands: Flow[BGMessage[IndexCommand], BGMessage[IndexCommand], NotUsed] = Flow.fromFunction {
+            val convertToIndexerCommandsWithoutLogs: Flow[BGMessage[IndexCommand], BGMessage[IndexCommand], NotUsed] = Flow.fromFunction {
               case bgMsg@BGMessage(_, IndexNewInfotonCommand(uuid, isCurrent, path, infotonOpt, indexName, trackingIDs)) =>
                 bgMsg.copy(message = IndexNewInfotonCommandForIndexer(uuid, isCurrent, path, infotonOpt, indexName, Seq(), trackingIDs))
               case bgMsg@BGMessage(_, IndexExistingInfotonCommand(uuid, weight, path, indexName, trackingIDs)) =>
                 bgMsg.copy(message = IndexExistingInfotonCommandForIndexer(uuid, weight, path, indexName, Seq(), trackingIDs))
               case other => other
             }
+
+            val convertToIndexerCommands =
+              convertToIndexerCommandsWithoutLogs.log("convertToIndexerCommands", msg => idxCmdStr(msg)(identity)).withAttributes(logAttr)
 
             val getInfotonIfNeeded = builder.add(
               Flow[BGMessage[IndexCommand]]
@@ -312,9 +327,11 @@ class IndexerStream(partition: Int,
                     }
                   case bgMessage => Future.successful(Success(bgMessage))
                 }
+                .log("getInfotonIfNeededBeforeCollect").withAttributes(logAttr)
                 .collect {
                   case Success(x) => x
                 }
+                .log("getInfotonIfNeededAfterCollect", msg => idxCmdStr(msg)(identity)).withAttributes(logAttr)
             )
 
             val indexCommandToEsActions = builder.add(
@@ -329,24 +346,19 @@ class IndexerStream(partition: Int,
                     logger.debug(s"creating es actions for indexExistingInfotonCommand: $ieic")
                     indexExistingCommandCounter += 1
                     val updateRequest =
-                      new UpdateRequest(indexName, "infoclone", uuid)
-                        .doc(s"""{"system":{"current": false}}""")
-                        .asInstanceOf[ActionRequest[_ <: ActionRequest[_ <: AnyRef]]]
-                    Success(
-                      bgMessage.copy(
-                        message = (
-                          InfoAction(updateRequest, weight, None),
-                          ieic.asInstanceOf[IndexCommand]
-                        )
-                      )
-                    )
+                      new UpdateRequest(indexName, uuid)
+                        .doc(s"""{"system":{"current": false}}""", XContentType.JSON)
+                        .asInstanceOf[DocWriteRequest[_]]
+                    Success(bgMessage.copy(message = (InfoAction(updateRequest, weight, None), ieic.asInstanceOf[IndexCommand])))
                   case x @ (BGMessage(_, IndexExistingInfotonCommand(_, _, _, _, _)) | BGMessage(_, IndexNewInfotonCommand(_, _, _, _, _, _)) |
                             BGMessage(_, IndexNewInfotonCommandForIndexer(_, _, _, None, _, _, _)) | BGMessage(_, NullUpdateCommandForIndexer(_, _, _, _, _)))
                       => logger.error(s"Unexpected input. Received: $x"); ???
                 }
+                .log("indexCommandToEsActionsBeforeCollect").withAttributes(logAttr)
                 .collect {
                   case Success(x) => x
                 }
+                .log("indexCommandToEsActionsAfterCollect").withAttributes(logAttr)
             )
 
             val groupEsActions = builder.add(
@@ -358,7 +370,7 @@ class IndexerStream(partition: Int,
 
             val indexInfoActionsFlow =
               builder.add(
-                Flow[Seq[BGMessage[(InfoAction, IndexCommand)]]].mapAsync(1) {
+                Flow[Seq[BGMessage[(InfoAction, IndexCommand)]]].mapAsync(esActionsParallelism) {
                   bgMessages =>
                     val esIndexRequests = bgMessages.map {
                       case BGMessage(
@@ -388,6 +400,7 @@ class IndexerStream(partition: Int,
                         BGMessage(bgMessages.flatMap(_.offsets), (bulkIndexResult, bgMessages.map(_.message._2)))
                       }
                 }
+                  .log("indexInfoActionsFlow").withAttributes(logAttr)
               )
 
             val updateIndexInfoInCas = builder.add(
@@ -415,6 +428,7 @@ class IndexerStream(partition: Int,
                         bgMessage.copy(message = indexCommands)
                       }
                 }
+                .log("updateIndexInfoInCas").withAttributes(logAttr)
             )
 
             val reportProcessTracking =
@@ -519,7 +533,7 @@ class IndexerStream(partition: Int,
   }
 
   case class InfoAction(
-                         esAction: ActionRequest[_ <: ActionRequest[_ <: AnyRef]],
+                         esAction: DocWriteRequest[_],
                          weight: Long,
                          indexTime: Option[Long]
                        )

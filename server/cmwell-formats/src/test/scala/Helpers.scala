@@ -26,13 +26,14 @@ trait Helpers {
   implicit class JsValueExtensions(v: JsValue) {
     def getValue =  withPrettyException({(v\"value").as[String]}, "getValue")
     def getQuad = withPrettyException({(v\"quad").as[String]}, "getQuad")
-    def getArr(prop: String): Seq[JsValue] = withPrettyException(_=>{((v \ prop).get: @unchecked) match { case JsArray(seq) => seq }},"getArr",prop)
+    def getArr(prop: String): collection.Seq[JsValue] =
+      withPrettyException(_=>{((v \ prop).get: @unchecked) match { case JsArray(seq) => seq }},"getArr",prop)
 
     def getFirst(prop: String) = getArr(prop).head
     def getValueOfFirst(prop: String) = getFirst(prop).getValue
 
     private def withPrettyException(f: => String, desc: String):String = Try(f).getOrElse(throw new Exception(s"Operation $desc failed on $v"))
-    private def withPrettyException(f: String => Seq[JsValue], desc: String, prop: String):Seq[JsValue] = {
+    private def withPrettyException(f: String => collection.Seq[JsValue], desc: String, prop: String):collection.Seq[JsValue] = {
       Try(f(prop)).recoverWith {
         case t: Throwable =>
           Failure(new Exception(s"""Operation $desc("$prop") failed on $v""",t))

@@ -15,6 +15,7 @@
 package cmwell.tools.data.utils.akka
 
 import akka.actor.ActorSystem
+import akka.http.scaladsl.Http
 import akka.http.scaladsl.model.HttpEntity.{Chunked, LastChunk}
 import akka.http.scaladsl.model.StatusCodes.{ClientError, ServerError}
 import akka.http.scaladsl.model._
@@ -26,18 +27,31 @@ import cmwell.tools.data.utils.ArgsManipulations
 import cmwell.tools.data.utils.ArgsManipulations.HttpAddress
 import cmwell.tools.data.utils.akka.HeaderOps._
 import cmwell.tools.data.utils.logging.{DataToolsLogging, LabelId}
-import cmwell.util.akka.http.HttpZipDecoder
 
 import scala.collection.immutable
 import scala.concurrent.duration._
 import scala.concurrent.{ExecutionContext, Future}
-import scala.util.{Failure, Success, Try}
 import scala.language.implicitConversions
-
 import scala.reflect.runtime.universe._
+import scala.util.{Failure, Success, Try}
+//Used for dataTools cross compilation
+import scala.collection.compat._
 
 
 object Retry extends DataToolsLogging with DataToolsConfig {
+
+  def createNewHostConnectionPool[T](hostName: String)
+                                    (implicit system: ActorSystem, mat: Materializer, ec: ExecutionContext) = {
+    val HttpAddress(protocol, host, port, _) = ArgsManipulations.extractBaseUrl(hostName)
+    HttpConnections.newHostConnectionPool[State[T]](host, port, protocol)
+  }
+
+  case class State[T](data: Seq[ByteString],
+                   vars: Map[String,String] = Map(),
+                   context: Option[T] = None,
+                   response: Option[HttpResponse] = None,
+                   count: Option[Int] = None,
+                   delay: FiniteDuration = 10.seconds)
 
   /**
     * Sends HTTP requests containing `Seq[ByteString]` payload data and context of type `T`.
@@ -60,11 +74,11 @@ object Retry extends DataToolsLogging with DataToolsConfig {
     */
   def retryHttp[T,S : TypeTag](delay: FiniteDuration,
                    parallelism: Int,
-                   baseUrl: String,
                    limit: Option[Int] = None,
-                   delayFactor : Double = 1)(
-                   createRequest: (Seq[ByteString], Map[String,String]) => HttpRequest,
-                   responseValidator: (ByteString, Seq[HttpHeader]) => Try[Unit] = (_, _) => Success(Unit))(
+                   delayFactor : Double = 1,
+                   managedConnection: Option[Flow[(HttpRequest,State[T]), (Try[HttpResponse],State[T]), Http.HostConnectionPool]] = None)(
+                   createRequest: (Seq[ByteString], Map[String,String], Option[T]) => HttpRequest,
+                   responseValidator: (ByteString, Seq[HttpHeader]) => Try[Unit] = (_, _) => Success(()))(
                    implicit system: ActorSystem,
                    mat: Materializer,
                    ec: ExecutionContext,
@@ -84,19 +98,20 @@ object Retry extends DataToolsLogging with DataToolsConfig {
       if ((delayFactor > 0) && !isFirstIteration) delay * delayFactor else delay
     }
 
+    /*
     case class State(data: Seq[ByteString],
                      vars: Map[String,String] = Map(),
                      context: Option[T] = None,
                      response: Option[HttpResponse] = None,
                      count: Option[Int] = limit,
-                     delay: FiniteDuration = delay)
+                     delay: FiniteDuration = delay)*/
 
     def stringifyData(data: Seq[ByteString]) =
       concatByteStrings(data, ByteString(",")).utf8String
 
     def retryWith(
-      state: State
-    ): Option[immutable.Iterable[(Future[Seq[ByteString]], State)]] =
+      state: State[T]
+    ): Option[immutable.Iterable[(Future[Seq[ByteString]], State[T])]] =
       state match {
         case State(data, _, _, Some(HttpResponse(s, h, e, _)), _, _)
             if s == StatusCodes.TooManyRequests =>
@@ -108,22 +123,19 @@ object Retry extends DataToolsLogging with DataToolsConfig {
                   h
                 )} status=$s entity=${strictEntity.data.utf8String} data=${concatByteStrings(data, endl).utf8String}"
               )
-            }
-            .onFailure {
-              case err =>
-                logger.error(
-                  s"$labelValue api garden mis-configured, call Yaniv to increase! host=${getHostname(h)} status=$s cannot read entity",
-                  err
-                )
-            }
+            }.onComplete{
+            case Failure(exception) => logger.error(
+              s"$labelValue api garden mis-configured, call Yaniv to increase! host=${getHostname(h)} status=$s cannot read entity", exception
+            )
+            case Success(_) =>
+          }
 
           // schedule a retry to http stream
 //        e.discardBytes()
           val future = after(delay, system.scheduler)(Future.successful(data))
           Some(immutable.Seq(future -> state))
 
-
-        case State(data, context, _, Some(res@HttpResponse(s: ServerError, h, e, _)), count, iterationDelay) =>
+        case State(data, vars, context, Some(res@HttpResponse(s: ServerError, h, e, _)), count, iterationDelay) =>
 
           val errorID = res.##
 
@@ -154,12 +166,14 @@ object Retry extends DataToolsLogging with DataToolsConfig {
               data
                 .map(
                   dataElement =>
-                    Future.successful(Seq(dataElement)) -> State(
+                    Future.successful(Seq(dataElement)) -> State[T](
                       Seq(dataElement),
-                      context
+                      vars,
+                      context,
+                      count = limit
                     )
                 )
-                .to[immutable.Iterable]
+                .to(immutable.Iterable)
             )
 
           }
@@ -203,11 +217,12 @@ object Retry extends DataToolsLogging with DataToolsConfig {
                 case None =>
 
                   logger.warn(
-                    s"$labelValue server error - received $s. host=${getHostnameValue(h)} data=${stringifyData(data)}. Will try again in ${delay}"
+                    s"$labelValue server error - received $s. host=${getHostnameValue(h)} data=${stringifyData(data)}. Will try again until success " +
+                      s"(count is not set) in ${delay}"
                   )
 
                   val future = after(delay, system.scheduler)(Future.successful(data))
-                  Some(immutable.Seq(future -> state))
+                  Some(immutable.Seq(future -> state.copy(count = limit)))
               }
             }
           }
@@ -250,7 +265,7 @@ object Retry extends DataToolsLogging with DataToolsConfig {
                       context
                   )
                 )
-                .to[immutable.Iterable]
+                .to(immutable.Iterable)
             )
           } else {
             e.toStrict(toStrictTimeout)
@@ -263,12 +278,11 @@ object Retry extends DataToolsLogging with DataToolsConfig {
                 badDataLogger.info(
                   s"$labelValue data=${concatByteStrings(data, endl).utf8String}"
                 )
-              }
-              .onFailure {
-                case err =>
-                  logger.warn(s"$labelValue client error: will retry again in $delay to send a single request, " +
-                              s"host=${getHostnameValue(h)} status=$s, cannot read entity, request data=${stringifyData(data)}", err)
-              }
+              }.onComplete{
+              case Failure(err) => logger.warn(s"$labelValue client error: will retry again in $delay to send a single request, " +
+                s"host=${getHostnameValue(h)} status=$s, cannot read entity, request data=${stringifyData(data)}", err)
+              case Success(_) =>
+            }
 
             None // failed to send a single data element
           }
@@ -315,7 +329,7 @@ object Retry extends DataToolsLogging with DataToolsConfig {
               Some(immutable.Seq(future -> state))
           }
 
-        case State(data, vars, _, None, count, _) =>
+        case State(data, vars, context, None, count, _) =>
           count match {
             case Some(c) if c > 0 =>
               if(state.data.size > 1) {
@@ -333,10 +347,10 @@ object Retry extends DataToolsLogging with DataToolsConfig {
                         Future.successful(Seq(dataElement)) -> State(
                           Seq(dataElement),
                           vars,
-                          state.context
+                          context
                         )
                     )
-                    .to[immutable.Iterable]
+                    .to(immutable.Iterable)
                 )
               }
 
@@ -370,29 +384,30 @@ object Retry extends DataToolsLogging with DataToolsConfig {
           None
       }
 
-//    val conn = Http().superPool[State]() // http connection flow
-//    val conn = Http().newHostConnectionPool[State](host = baseUrl, port = port) // http connection flow
-    val HttpAddress(protocol, host, port, uriPrefix) =
-      ArgsManipulations.extractBaseUrl(baseUrl)
-    val conn = HttpConnections.newHostConnectionPool[State](
-      host,
-      port,
-      protocol
-    ) // http connection flow
+    val conn = managedConnection match {
+      case Some(connection) => connection
+      case _ => Http().superPool[State[T]](settings = AkkaUtils.generateConnectionPoolSettings())
+    }
+
     val maxConnections =
       config.getInt("akka.http.host-connection-pool.max-connections")
     val httpPipelineSize =
       config.getInt("akka.http.host-connection-pool.pipelining-limit")
     val httpParallelism = maxConnections * httpPipelineSize
 
-    val job = Flow[(Future[Seq[ByteString]], State)]
+    val job = Flow[(Future[Seq[ByteString]], State[T])]
       .mapAsyncUnordered(httpParallelism) {
         case (data, state) => data.map(_ -> state)
       } // used for delay between executions
-      .map { case (data, state) => createRequest(data, state.vars) -> state }
+      .map { case (data, state) => {
+      val req = createRequest(data, state.vars, state.context) -> state
+      req
+    }
+
+    }
       .via(conn).map {
         case (tryResponse, state) =>
-          tryResponse.map(HttpZipDecoder.decodeResponse) -> state
+          tryResponse.map(AkkaUtils.decodeResponse) -> state
       }
       .mapAsyncUnordered(httpParallelism) {
         case (response @ Success(HttpResponse(s, _, e, _)), state)
@@ -455,6 +470,7 @@ object Retry extends DataToolsLogging with DataToolsConfig {
           Future.successful(data) -> State(data = data, context = context, vars=Map())
         case ( (data : Seq[ByteString], vars : Map[String,String]), context) =>
           Future.successful(data) -> State(data = data, context = context, vars=vars)
+        case e => logger.error(s"Unexpected state. got: $e"); ???
       }
       .via(GoodRetry.concat(Long.MaxValue, job)(retryWith))
       .map { case (result, state) => (result, state.data, state.context) }

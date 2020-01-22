@@ -71,7 +71,7 @@ class TripleStore(dataFetcher: DataFetcherImpl, cmwellRDFHelper: CMWellRDFHelper
     Await.result(crudServiceFS.getInfoton(path, None, None), 10.seconds).collect { case Everything(i) => i }
 
   private def infotonToQuads(i: Infoton): Iterator[Quad] = {
-    import scala.collection.JavaConversions._
+    import scala.collection.JavaConverters._
 
     val ds = nullFormatter.formattableToDataset(i)
 
@@ -79,13 +79,13 @@ class TripleStore(dataFetcher: DataFetcherImpl, cmwellRDFHelper: CMWellRDFHelper
       Quad(stmt.getSubject.getURI, stmt.getPredicate.getURI, jenaNodeToValue(stmt.getObject), quad)
 
     val defaultModelQuads = {
-      val it = ds.getDefaultModel.listStatements().map(stmtToQuad(_, None))
+      val it = ds.getDefaultModel.listStatements().asScala.map(stmtToQuad(_, None))
       if (it.hasNext) List(it) else Nil
     }
 
     val namedModelsQuadsIterators = JenaUtils.getNamedModels(ds).foldLeft(defaultModelQuads) {
       case (itList, (quad, model)) =>
-        val it = model.listStatements().map(stmtToQuad(_, Some(quad)))
+        val it = model.listStatements().asScala.map(stmtToQuad(_, Some(quad)))
         if (it.hasNext) it :: itList else itList
     }
 

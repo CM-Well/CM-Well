@@ -13,17 +13,17 @@
   * limitations under the License.
   */
 
-import semverfi.{SemVersion, Version}
+import nl.gn0s1s.bump.SemVer
 
-import scala.collection.GenSeq
+import scala.collection.parallel.ParSeq
 import scala.concurrent.{Await, Future}
 import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext.Implicits.global
 
 object Upgrade {
 
-  case class UpgradeFunc (applyToVersion: String, desc: String, func: (GenSeq[String]) => Future[Boolean]){
-    def executeUpgrade(hosts: GenSeq[String]) = {
+  case class UpgradeFunc (applyToVersion: String, desc: String, func: (ParSeq[String]) => Future[Boolean]){
+    def executeUpgrade(hosts: ParSeq[String]) = {
       if (Await.result(func(hosts), 1.minutes))
         info(s"$desc succeeded")
       else
@@ -33,22 +33,36 @@ object Upgrade {
 
   val postUpgradeList : List[UpgradeFunc] = {
     //example
-    /*List(UpgradeFunc("1.6.2", "myUpgradeSomething",(hosts: GenSeq[String]) => {info(s"in func print: ${hosts(0)}"); Future.successful(true)}),
-      UpgradeFunc("1.6.7", "myUpgradeSomethingFailed",(hosts: GenSeq[String]) => {info(s"in func print failed: ${hosts(0)}"); Future.successful(false)}))*/
+    /*List(UpgradeFunc("1.6.2", "myUpgradeSomething",(hosts: ParSeq[String]) => {info(s"in func print: ${hosts(0)}"); Future.successful(true)}),
+      UpgradeFunc("1.6.7", "myUpgradeSomethingFailed",(hosts: ParSeq[String]) => {info(s"in func print failed: ${hosts(0)}"); Future.successful(false)}))*/
     Nil
   }
 
-  def runPostUpgradeActions(currentVersionF : Future[String], upgraded : String, hosts: GenSeq[String]): Future[Boolean]= {
-    def shouldRun(test : SemVersion, curr : SemVersion, upgrade : SemVersion) : Boolean = (test > curr) && (test <= upgrade)
+  def runPostUpgradeActions(currentVersionF : Future[String], upgraded : String, hosts: ParSeq[String]): Future[Boolean]= {
+    /**
+      *  Note! According to semantic versions rules, what will be taken into account is only <major>.<minor>.<patch>
+      *    all text after + sign will not affect precedence!
+      *    Examples:  1.2.5  >  1.2.3
+      *       but     1.2.5  ==   1.2.5+167
+      */
+    def shouldRun(test : SemVer, curr : SemVer, upgrade : SemVer) : Boolean = (test > curr) && (test <= upgrade)
 
     currentVersionF.foreach{current =>
-      val currentVersion = Version(current)
-      val upgradedVersion = Version(upgraded)
+      val currentVersion = SemVer(current)
+      val upgradedVersion = SemVer(upgraded)
 
-      val relevantUpgradeFunctions = postUpgradeList.filter(f => shouldRun(Version(f.applyToVersion), currentVersion, upgradedVersion))
-      info(s"Going to run ${relevantUpgradeFunctions.size} upgrade functions")
+      if (currentVersion.isEmpty || upgradedVersion.isEmpty)
+          error(s"Failed to parse the versions:\n ${
+            currentVersion.fold(s"current: $current")(_ => "")} ${
+            upgradedVersion.fold(s"upgraded: $upgraded")(_ => "")
+          }. Stoping upgrade process!")
+      else
+      {
+        val relevantUpgradeFunctions = postUpgradeList.filter(f => shouldRun(SemVer(f.applyToVersion).get, currentVersion.get, upgradedVersion.get))
+        info(s"Going to run ${relevantUpgradeFunctions.size} upgrade functions")
 
-      relevantUpgradeFunctions.sortBy(f => Version(f.applyToVersion)).foreach(_.executeUpgrade(hosts))
+        relevantUpgradeFunctions.sortBy(f => SemVer(f.applyToVersion)).foreach(_.executeUpgrade(hosts))
+      }
     }
 
     Future(true)

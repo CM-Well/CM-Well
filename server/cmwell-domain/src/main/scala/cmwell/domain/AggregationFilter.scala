@@ -51,14 +51,9 @@ case class TermAggregationFilter(name: String = "Term Aggregation",
   }
 }
 
-case class HistogramAggregationFilter(name: String = "Histogram Aggregation",
-                                      override val field: Field,
-                                      interval: Int,
-                                      minDocCount: Int,
-                                      extMin: Option[Long],
-                                      extMax: Option[Long],
-                                      subFilters: Seq[AggregationFilter] = Seq.empty)
-    extends BucketAggregationFilter {
+case class HistogramAggregationFilter(name:String = "Histogram Aggregation", override val field:Field, interval:Int, minDocCount:Int,
+                                      extMin:Option[Double], extMax:Option[Double],
+                                      subFilters:Seq[AggregationFilter] = Seq.empty) extends BucketAggregationFilter {
   override def copyWithSuffix(suffix: String): AggregationFilter = {
     var counter = 0
     this.copy(name = name + suffix, subFilters = subFilters.map { counter += 1; _.copyWithSuffix(suffix + counter) })

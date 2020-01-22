@@ -14,7 +14,7 @@
   */
 package controllers
 
-import play.api.mvc.{Action, Controller, InjectedController}
+import play.api.mvc.{Action, InjectedController}
 import javax.inject._
 
 /**

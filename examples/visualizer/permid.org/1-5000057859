@@ -1,0 +1,189 @@
+{
+    "@id.sys": [{
+        "value": "/permid.org/1-5000057859"
+    }],
+    "type.sys": [{
+        "value": "ObjectInfoton"
+    }],
+    "uuid.sys": [{
+        "value": "1acb836cccdf2bfc431180b454193f12"
+    }],
+    "lastModified.sys": [{
+        "value": "2017-05-18T10:47:09.668Z"
+    }],
+    "path.sys": [{
+        "value": "/permid.org/1-5000057859"
+    }],
+    "dataCenter.sys": [{
+        "value": "dc1"
+    }],
+    "indexTime.sys": [{
+        "value": 1495104431907
+    }],
+    "parent.sys": [{
+        "value": "/permid.org"
+    }],
+    "isIncorporatedInCountry.organization": [{
+        "value": "http://sws.geonames.org/6252001/",
+        "type": "http://www.w3.org/2001/XMLSchema#anyURI"
+    }],
+    "hasAKAName.organization": [{
+        "value": "CALIFORNIA SECRETARY OF STATE",
+        "lang": "en",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }],
+    "hasOrganizationType.organization": [{
+        "value": "http://permid.org/ontology/organization/organizationTypeGovernmental",
+        "type": "http://www.w3.org/2001/XMLSchema#anyURI"
+    }],
+    "type.rdf": [{
+        "value": "http://permid.org/ontology/organization/Organization",
+        "type": "http://www.w3.org/2001/XMLSchema#anyURI"
+    }, {
+        "value": "http://ont.thomsonreuters.com/mdaas/Organization",
+        "type": "http://www.w3.org/2001/XMLSchema#anyURI"
+    }],
+    "hasActivityStatus.organization": [{
+        "value": "http://permid.org/ontology/organization/statusActive",
+        "type": "http://www.w3.org/2001/XMLSchema#anyURI"
+    }],
+    "hasHeadquartersAddress.organization": [{
+        "value": "http://permid.org/2-8830bdab9ed9ebfd7348de7deb1589dea0ef2090f942d563c9c9f66bc085fa34",
+        "type": "http://www.w3.org/2001/XMLSchema#anyURI"
+    }],
+    "MXID.mdaas": [{
+        "value": "107548792",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }],
+    "hasSubTypeCode.organization": [{
+        "value": "REGA",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }],
+    "akaName.mdaas": [{
+        "value": "CALIFORNIA SECRETARY OF STATE",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }],
+    "hasURL.vcard": [{
+        "value": "http://kepler.ss.ca.gov/list.html",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }],
+    "entityLastReviewedDate.mdaas": [{
+        "value": "2009-04-01T04:00:00Z",
+        "type": "http://www.w3.org/2001/XMLSchema#dateTime"
+    }],
+    "OrganizationProviderTypeCode.mdaas": [{
+        "value": "1",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }],
+    "isVerified.organization": [{
+        "value": "true",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }],
+    "organizationWebsite.mdaas": [{
+        "value": "http://kepler.ss.ca.gov/list.html",
+        "type": "http://www.w3.org/2001/XMLSchema#anyURI"
+    }],
+    "officialLatinName.mdaas": [{
+        "value": "CALIFORNIA SECRETARY OF STATE: DIVISION OF CORPORATIONS",
+        "lang": "en",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }],
+    "isDomiciledIn.organization": [{
+        "value": "http://sws.geonames.org/6252001/",
+        "type": "http://www.w3.org/2001/XMLSchema#anyURI"
+    }],
+    "CommonName.mdaas": [{
+        "value": "California Secretary Of State Division Of Corporations",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }],
+    "hasRegisteredAddress.organization": [{
+        "value": "http://permid.org/2-ed482fc128b853b1b70a637e8295744702ed9a489e62b3b7480fa69bcf96398e",
+        "type": "http://www.w3.org/2001/XMLSchema#anyURI"
+    }],
+    "organizationStatusCode.mdaas": [{
+        "value": "Active",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }],
+    "hasOfficialNameNormalized.organization": [{
+        "value": "California Secretary Of State Division Of Corporations",
+        "lang": "en",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }],
+    "isManaged.organization": [{
+        "value": "true",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }],
+    "hasOfficialName.organization": [{
+        "value": "CALIFORNIA SECRETARY OF STATE: DIVISION OF CORPORATIONS",
+        "lang": "en",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }],
+    "hasNDAOrgID.organization": [{
+        "value": "106227915",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }],
+    "sameAs.owl": [{
+        "value": "http://data.thomsonreuters.com/1-5000057859",
+        "type": "http://www.w3.org/2001/XMLSchema#anyURI"
+    }],
+    "hasShortName.organization": [{
+        "value": "California Secr",
+        "lang": "en",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }],
+    "hasPermId.tr-common": [{
+        "value": "5000057859",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }],
+    "isDomiciledIn.mdaas": [{
+        "value": "United States",
+        "lang": "en",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }],
+    "hasMXID.organization": [{
+        "value": "107548792",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }],
+    "hasRCPID.organization": [{
+        "value": "470098786",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }],
+    "isPublicFlag.mdaas": [{
+        "value": "false",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }],
+    "hasLegacyPI.organization": [{
+        "value": "15894921",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }],
+    "subsidiariesCount.mdaas": [{
+        "value": "0",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }],
+    "organizationTypeCode.mdaas": [{
+        "value": "Government Department / Agency",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }],
+    "organizationSubtypeCode.mdaas": [{
+        "value": "Regulatory Agency",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }],
+    "equityInstrumentCount.mdaas": [{
+        "value": "0",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }],
+    "isIncorporatedIn.mdaas": [{
+        "value": "United States",
+        "lang": "en",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }],
+    "RCPID.mdaas": [{
+        "value": "470098786",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }],
+    "hasAKANameNormalized.organization": [{
+        "value": "California Secretary of State",
+        "lang": "en",
+        "type": "http://www.w3.org/2001/XMLSchema#string"
+    }]
+}

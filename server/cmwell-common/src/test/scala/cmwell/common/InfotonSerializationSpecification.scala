@@ -16,9 +16,10 @@
 
 package cmwell.common
 
-import org.scalacheck._ ,Prop.forAll
+import org.scalacheck._
+import Prop.forAll
 import cmwell.domain._
-import cmwell.common.build.{JsonSerializer => JS}
+import domain.testUtil.InfotonGenerator.genericSystemFields
 
 /**
  * Created by gilad on 7/29/14.
@@ -59,7 +60,7 @@ object InfotonSerializationSpecification extends Properties("Infoton") {
       Map[String,Set[FieldValue]]() ++ m
     }
     iType match {
-      case 0 => ObjectInfoton(path.mkString("/", "/", ""),"dc_test", None, mkFields, None)
+      case 0 => ObjectInfoton(genericSystemFields.copy(path = path.mkString("/", "/", "")), mkFields)
       case 1 => {
         val (content, mimeType): Tuple2[Array[Byte],String] = scala.util.Random.nextBoolean() match{
           case true => (txtVal.getBytes("UTF-8"),"text/plain")
@@ -73,7 +74,7 @@ object InfotonSerializationSpecification extends Properties("Infoton") {
           case false => None
           case true => Some(mkFields)
         }
-        FileInfoton(path=path.mkString("/", "/", ""),dc="dc_test", fields=f, content=Some(FileContent(content, mimeType)), protocol = None)
+        FileInfoton(genericSystemFields.copy(path = path.mkString("/", "/", "")), f, Some(FileContent(content, mimeType)))
       }
       case 2 => ??? //unreacable for now, TODO: add LinkInfoton Generation
       case _ => ??? //should never get here
@@ -81,8 +82,8 @@ object InfotonSerializationSpecification extends Properties("Infoton") {
   }
 
   val sCmp: Function2[Infoton,Infoton,Boolean] = (i,j) =>  {
-    i.path == j.path &&
-    i.lastModified.compareTo(j.lastModified) == 0 &&
+    i.systemFields.path == j.systemFields.path &&
+    i.systemFields.lastModified.compareTo(j.systemFields.lastModified) == 0 &&
     i.uuid == j.uuid &&
     i.parent == j.parent
   }
@@ -112,18 +113,19 @@ object InfotonSerializationSpecification extends Properties("Infoton") {
     case _ => false
   }
 
-  property("encodeAndDecode") = forAll(infotons) {
-    i: Infoton => {
-      val e = JS.encodeInfoton(i)
-      val d = JS.decodeInfoton(e)
-      iCmp(i, d)
-    }
+  def serialize2Anddeserialize2(i: Infoton): Infoton = {
+    val (uuid,rows) = InfotonSerializer.serialize2(i)
+    val it = rows.view.flatMap {
+      case (q,fields) => fields.view.sortBy(_._1).flatMap{
+        case (fieldName,values) =>  values.view.sortBy(_._1).map(value => (q,fieldName,value))
+      }
+    }.iterator
+    InfotonSerializer.deserialize2(uuid,it)
   }
 
   property("serializeAndDeserialize") = forAll(infotons) {
     i: Infoton => {
-      val e = InfotonSerializer.serialize(i)
-      val d = InfotonSerializer.deserialize(e)
+      val d = serialize2Anddeserialize2(i)
       iCmp(i,d)
     }
   }

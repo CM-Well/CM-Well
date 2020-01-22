@@ -14,7 +14,7 @@
   */
 import cmwell.ctrl.config.Jvms
 
-import scala.collection.GenSeq
+import scala.collection.parallel.ParSeq
 
 /**
   * Created by michael on 8/27/14.
@@ -116,127 +116,26 @@ case class CassandraConf(home: String,
                          index: Int,
                          rs: RackSelector,
                          g1: Boolean,
-                         hostIp: String)
+                         hostIp: String,
+                         casDataDirs:Seq[String],
+                         casUseCommitLog:Boolean,
+                         numOfCores:Integer,
+                         diskOptimizationStrategy:String)
     extends ComponentConf(hostIp, s"$home/app/cas/cur", sName, s"$home/conf/$dir", "cassandra.yaml", index) {
   override def getPsIdentifier = s"/log/cas${getIndexTxt}/"
 
   override def mkScript: ConfFile = {
-    //import scala.math._
-
-    def getJarAbsPath(dir: java.io.File, prefix: String): String = {
-      if (!dir.exists) throw new IllegalFileException("Dir " + dir.getAbsolutePath + " was not found.")
-      else if (!dir.isDirectory) throw new IllegalFileException("File " + dir.getAbsolutePath + " is not a directory.")
-
-      val files = dir.list.filter(f => f.startsWith(prefix))
-
-      if (files.length > 1) throw new Exception("multiple jars were found: " + files.mkString(", "))
-      else if (files.length == 0) throw new Exception("no jars were found (prefix = " + prefix + ").")
-      else dir.getAbsolutePath + "/" + files.head
-    }
-    val pidFile = s"$home/app/cas/cur/cassandra.pid"
-    val mXmx = resourceManager.getMxmx
-    //val mXms = "-Xms" + heapSize + "M"
-    val mXms = resourceManager.getMxms
-
-    //Young gen: min(max_sensible_per_modern_cpu_core * num_cores, 1/4 * heap size)
-    val mXmn = resourceManager.getMxmn
-
-    // reduce the per-thread stack size to minimize the impact of Thrift
-    // thread-per-client.  (Best practice is for client connections to
-    // be pooled anyway.) Only do so on Linux where it is known to be
-    // supported.
-    val mXss = resourceManager.getMxss
-
-    /*lazy val jamm = {
-      val f = new java.io.File(home+"/app/cas/cur/lib")
-      val arr = f.listFiles(new FilenameFilter {
-        override def accept(dir: File, name: String): Boolean = name.startsWith("jamm")
-      })
-      require(arr.size == 1)
-      Seq(s"-javaagent:${arr.head.getAbsolutePath}")
-    }*/
-
-    val jamm = Seq(s"-javaagent:$home/app/cas/cur/lib/$$JAMMJAR")
-
-    /*val jvmArgs = JVMOptimizer.java7ExtraArgs ++ Seq("-ea") ++ jamm ++ Seq(
-      "-XX:+UseThreadPriorities",
-      "-XX:ThreadPriorityPolicy=42",
-      mXmx,
-      mXms,
-      mXmn,
-      "-XX:+HeapDumpOnOutOfMemoryError",
-      mXss,
-      "-XX:+UseG1GC",
-      "-XX:SurvivorRatio=8",
-      "-XX:MaxTenuringThreshold=1",
-      "-Djava.net.preferIPv4Stack=true",
-      "-Dcom.sun.management.jmxremote.port=" + jmxremotePort,
-      "-Dcom.sun.management.jmxremote.ssl=false",
-      "-Dcom.sun.management.jmxremote.authenticate=false",
-      "-Dlog4j.configuration=log4j-server.properties",
-      "-Dlog4j.defaultInitOverride=true",
-      s"-Dlog4j.appender.R.File=$home/log/$dir/system.log",
-      "-Dmx4jaddress=0.0.0.0",
-      "-Dmx4jport=" + dmx4jport,
-      "-Dcassandra-foreground=yes",
-      s"-Dcassandra-pidfile=$pidFile")*/
-    //"-Dcassandra.config=file://${path}/conf/cas/cassandra.yaml")
-
-    val cmsGc = Seq(
-      "-XX:+UseParNewGC",
-      "-XX:+UseConcMarkSweepGC",
-      "-XX:+CMSParallelRemarkEnabled",
-      "-XX:SurvivorRatio=8",
-      "-XX:MaxTenuringThreshold=1",
-      "-XX:CMSInitiatingOccupancyFraction=75",
-      "-XX:+UseCMSInitiatingOccupancyOnly"
-    )
-
-    val g1Gc = Seq("-XX:+UseG1GC", "-XX:SurvivorRatio=8")
-
-    val jvmArgs = JVMOptimizer.java7ExtraArgs ++ Seq("-ea") ++ jamm ++ Seq("-XX:+UseThreadPriorities",
-                                                                           "-XX:ThreadPriorityPolicy=42",
-                                                                           mXmx,
-                                                                           mXms,
-                                                                           mXmn,
-                                                                           mXss) ++
-      (if (g1) g1Gc else cmsGc) ++
-      Seq(
-        "-Djava.net.preferIPv4Stack=true",
-        "-Dcom.sun.management.jmxremote.port=" + PortManagers.cas.jmxPortManager.getPort(index),
-        "-Dcom.sun.management.jmxremote.ssl=false",
-        "-Dcom.sun.management.jmxremote.authenticate=false",
-        "-Dlog4j.configuration=log4j-server.properties",
-        "-Dlog4j.defaultInitOverride=true",
-        "-Dmx4jaddress=0.0.0.0",
-        "-Dmx4jport=" + PortManagers.cas.dmx4jPortManager.getPort(index),
-        "-Dcassandra-foreground=yes",
-        /*"-Dconsistent.rangemovement=false",*/
-        s"-Dcassandra-pidfile=$pidFile",
-        s"-Dcassandra.logdir=$home/log/$dir/"
-      )
-    def classpath =
-      s"$home/conf/" + dir + ":" +
-        home + "/build/classes/main:" +
-        home + "/build/classes/thrift:" +
-        s"$home/app/cas/cur/lib/*"
-
-    // Seq(s"-javaagent:$home/app/ctrl/cur", s"-Dctrl.listenAddress=$listenAddress", s"-Dctrl.seedNodes=${host}",
-    // s"-Dctrl.clusterName=$clusterName", s"-Dctrl.roles=Metrics,CassandraNode")
-    val agentLibArgs = Seq.empty
-
-    val args = Seq("starter", "java") ++ agentLibArgs ++ jvmArgs ++ JVMOptimizer.gcLoggingJVM(
-      s"$home/log/" + dir + "/gc.log"
-    ) ++ Seq("-cp", classpath, "org.apache.cassandra.service.CassandraDaemon")
 
     val scriptString =
       s"""export PATH=$home/app/java/bin:$home/bin/utils:$PATH
        |export CASSANDRA_HOME=$home/app/cas/cur
        |export CASSANDRA_CONF=$home/conf/${dir}
-       |export JAMMJAR=`ls -1 $home/app/cas/cur/lib/ | grep jamm`
+       |export CASSANDRA_INCLUDE=$home/conf/${dir}/cassandra.in.sh
+       |export CASSANDRA_HEAPDUMP_DIR=$home/log/${dir}
+       |export CASSANDRA_LOG_DIR=$home/log/${dir}
        |$CHKSTRT
        |$BMSG
-       |${args.mkString(" ")} > $home/log/$dir/stdout.log 2> $home/log/$dir/stderr.log &""".stripMargin
+       |starter bin/cassandra -f > $home/log/$dir/stdout.log 2> $home/log/$dir/stderr.log &""".stripMargin
 
     ConfFile(sName, scriptString, true)
   }
@@ -253,23 +152,39 @@ case class CassandraConf(home: String,
         "dir" -> dir,
         "root_dir" -> home,
         "endpoint_snitch" -> snitchType,
-        "row_cache_size" -> rowCacheSize.toString
+        "row_cache_size" -> rowCacheSize.toString,
+        "cas_data_dirs" -> casDataDirs.map(dir=> s"$home/data/$dir/data").mkString("\n    - "),
+        "concurrent_reads" -> (16 * casDataDirs.size).toString,
+        "concurrent_writes" ->  (8 * Math.max(1, numOfCores / 2)).toString,
+        "concurrent_counter_writes" -> (16 * casDataDirs.size).toString,
+        "disk_optimization_strategy" -> diskOptimizationStrategy,
+        "concurrent_compactors" -> (if (diskOptimizationStrategy == "SSD") Math.max(1, numOfCores / 2) else 1).toString
       )
     )
+
 
 //    val log4jContent = templateToFile(s"scripts/templates/log4j-server.properties",
 //      Map("file_path" -> s"$home/log/$dir/system.log"))
 
     val logBackContent = ResourceBuilder.getResource(s"scripts/templates/logback-cassandra.xml", Map.empty)
 
+    val jvmOptionsMap = Map[String, String](
+      "ps_id" -> getPsIdentifier,
+      "cas_ms" -> s"${resourceManager.mxms}",
+      "cas_mx" -> s"${resourceManager.mxmx}",
+      "cas_mn" -> s"${resourceManager.mxmn}"
+    )
+    val jvmOptContent = ResourceBuilder.getResource(s"scripts/templates/cas-jvm.options", jvmOptionsMap)
+
+    val cassandraEnvContent = ResourceBuilder.getResource(s"scripts/templates/cassandra-env.sh", Map.empty)
+
+    val casIncludeContent = ResourceBuilder.getResource(s"scripts/templates/cassandra.in.sh", Map.empty)
+
     val rackConfContent =
       ResourceBuilder.getResource("scripts/templates/cassandra-rackdc.properties", Map("rack_id" -> rs.getRackId(this)))
 
-    val cqlInit = ResourceBuilder.getResource("scripts/templates/cassandra-cql-init-cluster",
-                                              Map("replication_factor" -> replicationFactor.toString))
-
     val cqlInit2 = ResourceBuilder.getResource("scripts/templates/cassandra-cql-init-cluster-new",
-                                               Map("replication_factor" -> replicationFactor.toString))
+                                               Map("replication_factor" -> replicationFactor.toString, "durable_writes" -> casUseCommitLog.toString))
 
     val cqlInit3 = ResourceBuilder.getResource("scripts/templates/zstore-cql-init-cluster",
                                                Map("replication_factor" -> replicationFactor.toString))
@@ -280,9 +195,11 @@ case class CassandraConf(home: String,
     List(
       ConfFile("cassandra.yaml", confContent, false),
       ConfFile("logback.xml", logBackContent),
+      ConfFile("cassandra-env.sh", cassandraEnvContent),
+      ConfFile("cassandra.in.sh", casIncludeContent),
+      ConfFile("jvm.options", jvmOptContent),
       ConfFile("cassandra-rackdc.properties", rackConfContent, false),
       ConfFile("cassandra-status-viewer", cassandraStatus, true),
-      ConfFile("cassandra-cql-init-cluster", cqlInit),
       ConfFile("cassandra-cql-init-cluster-new", cqlInit2),
       ConfFile("zstore-cql-init-cluster", cqlInit3)
     )
@@ -300,103 +217,51 @@ case class ElasticsearchConf(clusterName: String,
                              home: String,
                              resourceManager: JvmMemoryAllocations,
                              dir: String = "es",
-                             template: String = "es.yml",
+                             template: String = "elasticsearch.yml",
                              listenAddress: String = "127.0.0.1",
                              masterNodes: Int,
                              sName: String,
                              index: Int,
                              rs: RackSelector,
-                             autoCreateIndex: Boolean,
                              g1: Boolean,
-                             hostIp: String)
-    extends ComponentConf(hostIp, s"$home/app/es/cur", sName, s"$home/conf/$dir", "es.yml", index) {
-  val classpath = s"""'$home/app/es/cur/lib/*:$home/app/es/cur/lib/sigar/*'"""
+                             hostIp: String,
+                             dirsPerEs: Int = 1)
+    extends ComponentConf(hostIp, s"$home/app/es/cur", sName, s"$home/conf/$dir", "elasticsearch.yml", index) {
+
+  val classpath = s"""'$home/app/es/cur/lib/*:'"""
 
   override def getPsIdentifier = {
     if (dir == "es-master")
-      s"/log/es-master/"
+      s"PsIdElasticMasterNode"
     else
-      s"/log/es${getIndexTxt}/"
+      s"PsIdElasticDataNode$getIndexTxt"
   }
   override def mkScript: ConfFile = {
-    /*def jvmArgs = {
-      import scala.math._
-      val mXmx = resourceManager.getMxmx
-      val mXms = resourceManager.getMxms
-      val mXmn = resourceManager.getMxmn
-      val mXss = resourceManager.getMxss
-      Seq("-XX:+UseCondCardMark",
-        "-Duser.timezone=GMT0",
-        mXmx,
-        mXms,
-        mXmn,
-        mXss,
-        "-Djava.awt.headless=true",
-        "-XX:+UseG1GC",
-        "-XX:+HeapDumpOnOutOfMemoryError",
-        s"-Dcom.sun.management.jmxremote.port=${jmxremotePort}",
-        "-Dcom.sun.management.jmxremote.ssl=false",
-        "-Dcom.sun.management.jmxremote.authenticate=false",
-        "-Delasticsearch",
-        s"-Des.path.home=$home/app/es/cur",
-        s"-Des.config=$home/conf/${dir}/es.yml")
-    }*/
-    // Seq(s"-javaagent:$home/app/ctrl/cur", s"-Dctrl.listenAddress=$listenAddress", s"-Dctrl.seedNodes=${host}",
-    // s"-Dctrl.clusterName=$clusterName", s"-Dctrl.roles=Metrics,ElasticsearchNode")
-    val agentLibArgs = Seq.empty
-    val cmsGc = Seq(
-      "-XX:+UseCondCardMark",
-      "-XX:+UseParNewGC",
-      "-XX:+UseConcMarkSweepGC",
-      "-XX:CMSInitiatingOccupancyFraction=75",
-      "-XX:+UseCMSInitiatingOccupancyOnly")
-
-    val g1Gc = Seq("-XX:+UseG1GC", "-XX:SurvivorRatio=8")
-
-    def jvmArgs = {
-      val mXmx = resourceManager.getMxmx
-      val mXms = resourceManager.getMxms
-      val mXmn = resourceManager.getMxmn
-      val mXss = resourceManager.getMxss
-      Seq("-Duser.timezone=GMT0", mXmx, mXms, mXmn, mXss, "-Djava.awt.headless=true") ++
-        (if (g1) g1Gc else cmsGc) ++
-        Seq(
-          s"-Dcom.sun.management.jmxremote.port=${PortManagers.es.jmxPortManager.getPort(index)}",
-          "-Dcom.sun.management.jmxremote.ssl=false",
-          "-Dcom.sun.management.jmxremote.authenticate=false",
-          "-Delasticsearch",
-          s"-Des.path.home=$home/app/es/cur",
-          s"-Des.config=$home/conf/${dir}/es.yml"
-        )
-    }
-
-    val args = Seq("starter", "java") ++ agentLibArgs ++ jvmArgs ++ JVMOptimizer.gcLoggingJVM(
-      s"$home/log/${dir}/gc.log"
-    ) ++ Seq("-cp", classpath, "org.elasticsearch.bootstrap.Elasticsearch")
 
     val scriptString =
       s"""export PATH=$home/app/java/bin:$home/bin/utils:$PATH
-         |export ES_HOME=$home/app/es/cur
+         |export ES_PATH_CONF=$home/conf/$dir/config
          |$CHKSTRT
          |$BMSG
-         |${args.mkString(" ")} > $home/log/$dir/stdout.log 2> $home/log/$dir/stderr.log &""".stripMargin
+         |starter bin/elasticsearch > $home/log/$dir/stdout.log 2> $home/log/$dir/stderr.log &""".stripMargin
 
     ConfFile(sName, scriptString, true)
   }
 
   override def mkConfig: List[ConfFile] = {
-    val httpHost = if (masterNode && !dataNode) s"http.host: $host" else ""
-    val httpPort = if (masterNode && !dataNode) 9200 else PortManagers.es.httpPortManager.getPort(index)
-    val transportPort = if (masterNode && !dataNode) 9300 else PortManagers.es.transportPortManager.getPort(index)
+    val httpHost = if(masterNode) s"http.host: $host" else ""
+    val httpPort = if(masterNode) 9200 else PortManagers.es.httpPortManager.getPort(index)
+    val transportPort = if(masterNode) 9300 else PortManagers.es.transportPortManager.getPort(index)
 
     val m = Map[String, String](
       "clustername" -> clusterName,
-      "nodename" -> listenAddress,
+      "nodename" -> nodeName,
       "node-master" -> masterNode.toString,
       "node-data" -> dataNode.toString,
       "recoverafternodes" -> { if (expectedNodes > 3) expectedNodes - 2 else expectedNodes - 1 }.toString,
       "expectednodes" -> expectedNodes.toString,
-      "hosts" -> seeds.split(',').mkString("", s":$seedPort,", s":$seedPort"),
+      "seed_hosts" -> seeds.split(',').mkString("", s":$seedPort,", s":$seedPort"),
+      "initial_master_nodes" -> seeds.split(',').mkString("", "-master,", "-master"),
       "dir" -> dir,
       "listen_address" -> listenAddress,
       "root_dir" -> home,
@@ -406,24 +271,32 @@ case class ElasticsearchConf(clusterName: String,
       "http_port" -> httpPort.toString,
       "transport_port" -> transportPort.toString,
       "num_of_shards" -> expectedNodes.toString,
-      "num_of_replicas" -> { if (expectedNodes > 2) 2 else 0 }.toString
+      "num_of_replicas" -> { if (expectedNodes > 2) 2 else 0 }.toString,
+      "path_data" -> { if (dirsPerEs == 1) s"$home/data/$dir"
+                       else {
+                         (2 to dirsPerEs).map(_.toString).fold(s"$home/data/es")((acc, x) => s"$home/data/es$x,$acc")}}
     )
 
-    val confContent = ResourceBuilder.getResource(s"scripts/templates/${template}", m)
+    val confContent = ResourceBuilder.getResource(s"scripts/templates/$template", m)
 
     val m2 = Map[String, String]("number_of_shards" -> Math.min(expectedNodes, 10).toString,
                                  "number_of_replicas" -> numberOfReplicas.toString)
-    val mappingContent = ResourceBuilder.getResource(s"scripts/templates/mapping.json", m2)
-    val mappingContentNew = ResourceBuilder.getResource(s"scripts/templates/indices_template_new.json", m2)
+    val mappingContent = ResourceBuilder.getResource(s"scripts/templates/indices_template_new.json",m2)
 
-    val loggerConf = ResourceBuilder.getResource("scripts/templates/es-logger.yml", Map.empty[String, String])
+    val loggerConf = ResourceBuilder.getResource("scripts/templates/es-log4j2.properties", Map.empty[String, String])
 
-    List(
-      ConfFile("es.yml", confContent, false),
-      ConfFile("mapping.json", mappingContent, false),
-      ConfFile("indices_template_new.json", mappingContentNew, false),
-      ConfFile("logging.yml", loggerConf, false, Some(s"$home/app/es/cur/config"))
+    val m3 = Map[String, String](
+      "ps_id" -> getPsIdentifier,
+      "es_ms" -> s"${resourceManager.mxms}",
+      "es_mx" -> s"${resourceManager.mxmx}",
+      "log_dir" -> s"$home/log/$dir"
     )
+    val jvmOpts = ResourceBuilder.getResource("scripts/templates/es-jvm.options", m3)
+
+    List(ConfFile("elasticsearch.yml", confContent, false, Some(s"$home/conf/$dir/config")),
+         ConfFile("indices_template_new.json", mappingContent, false),
+         ConfFile("log4j2.properties", loggerConf, false, Some(s"$home/conf/$dir/config")),
+         ConfFile("jvm.options", jvmOpts, false, Some(s"$home/conf/$dir/config")))
   }
 }
 
@@ -477,15 +350,19 @@ case class ZookeeperConf(home: String, clusterName: String, servers: Seq[String]
   }
 
   override def mkScript: ConfFile = {
-    val exports = s"export PATH=$home/app/java/bin:$home/bin/utils:$PATH"
+    val exports = s"""export PATH=$home/app/java/bin:$home/bin/utils:$PATH
+                     |export ZOO_LOG_DIR=$home/log/$dir
+                     |export ZOO_LOG4J_PROP="INFO, ROLLINGFILE"
+                     |export ZOOCFGDIR=$confDir
+                     |export JMXDISABLE=true
+                     |export JVMFLAGS="-Xmx500m -Xms500m -Dlog4j.configuration=file:$confDir/log4j.properties"""".stripMargin
     // scalastyle:off
-    val cp = s"cur/lib/slf4j-log4j12-1.6.1.jar:cur/lib/slf4j-api-1.6.1.jar:cur/lib/netty-3.7.0.Final.jar:cur/lib/log4j-1.2.16.jar:cur/lib/jline-0.9.94.jar:cur/zookeeper-${cmwell.util.build.BuildInfo.zookeeperVersion}.jar:$home/conf/$dir"
     val scriptString =
       s"""
-         |$exports
+          |$exports
           |$CHKSTRT
           |$BMSG
-          |starter java -Xmx300m -Xms300m -XX:+UseG1GC -cp $cp -Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.local.only=false org.apache.zookeeper.server.quorum.QuorumPeerMain $home/conf/$dir/zoo.cfg > $home/log/$dir/stdout.log 2>  $home/log/$dir/stderr.log &
+          |starter $home/app/zookeeper/cur/bin/zkServer.sh start-foreground > $home/log/$dir/stdout.log 2>  $home/log/$dir/stderr.log &
       """.stripMargin
     // scalastyle:on
     ConfFile("start.sh", scriptString, true)
@@ -503,7 +380,6 @@ case class ZookeeperConf(home: String, clusterName: String, servers: Seq[String]
     val myId = (servers.indexOf(hostIp) + 1).toString
 
     val loggerMap = Map[String, String]("zookeeperLogDir" -> s"$home/log/$dir")
-
     val loggerConf = ResourceBuilder.getResource("scripts/templates/log4j-zookeeper.properties", loggerMap)
 
     List(ConfFile("zoo.cfg", confContent, false),
@@ -529,7 +405,8 @@ case class BgConf(home: String,
                   seeds: String,
                   seedPort: Int = 9301,
                   dir: String = "bg",
-                  defaultRdfProtocol: String)
+                  defaultRdfProtocol: String,
+                  transportAddress: String)
     extends ComponentConf(hostIp, s"$home/app/bg", sName, s"$home/conf/bg", "bg.yml", 1) {
   override def mkScript: ConfFile = {
     def jvmArgs = {
@@ -548,6 +425,7 @@ case class BgConf(home: String,
       Seq(
         "-XX:+UseCondCardMark",
         "-Duser.timezone=GMT0",
+        "-Des.set.netty.runtime.available.processors=false",
         aspectj,
         "-Dfile.encoding=UTF-8",
         s"-Dlog.level=$logLevel",
@@ -596,8 +474,9 @@ case class BgConf(home: String,
       "irwServiceDao.clusterName" -> s"$clusterName",
       "irwServiceDao.hostName" -> s"$hostName",
       "ftsService.clusterName" -> s"$clusterName",
-      "ftsService.transportAddress" -> s"$hostName",
-      "cmwell.rdfDefaultProtocol" -> defaultRdfProtocol
+      "ftsService.transportAddress" -> s"$transportAddress",
+      "cmwell.rdfDefaultProtocol" -> defaultRdfProtocol,
+      "kafka.bootstrap.servers" -> s"localhost:9092,${zookeeperServers.map(kafkaNode => s"$kafkaNode:9092").mkString(",")}"
     )
     val m = Map[String, String](
       "clustername" -> clusterName,
@@ -627,7 +506,8 @@ case class CwConf(home: String,
                   hostIp: String,
                   seeds: String,
                   seedPort: Int,
-                  subjectsInSpAreHttps: Boolean)
+                  subjectsInSpAreHttps: Boolean,
+                  transportAddress: String)
     extends ComponentConf(hostIp, s"$home/app/ws", sName, s"$home/conf/cw", "ws.yml", 1) {
   override def mkScript: ConfFile = {
     {
@@ -676,7 +556,7 @@ case class CwConf(home: String,
       "ftsService.clusterName" -> s"$clusterName",
       "cmwell.home" -> s"$home",
       "irwServiceDao.hostName" -> s"$hostName",
-      "ftsService.transportAddress" -> s"$hostName",
+      "ftsService.transportAddress" -> s"$transportAddress",
       "ftsService.defaultPartitionNew" -> s"cm_well",
       "quads.cache.size" -> s"1000",
       "quads.globalOperations.results.maxLength" -> s"10000",
@@ -717,7 +597,8 @@ case class WebConf(home: String,
                    hostIp: String,
                    seeds: String,
                    seedPort: Int,
-                   defaultRdfProtocol: String)
+                   defaultRdfProtocol: String,
+                   transportAddress: String)
     extends ComponentConf(hostIp, s"$home/app/ws", sName, s"$home/conf/ws", "ws.yml", 1) {
   def genMemStr(mem: String): String = {
     if (!mem.isEmpty) s"-J$mem" else mem
@@ -741,6 +622,7 @@ case class WebConf(home: String,
         s"-Dcom.sun.management.jmxremote.port=${PortManagers.ws.jmxPortManager.getPort(1)}",
         "-Dcom.sun.management.jmxremote.ssl=false",
         "-Dcom.sun.management.jmxremote.authenticate=false",
+        "-Des.set.netty.runtime.available.processors=false",
         s"-Dcmwell.home=$home",
         s"-Dlog.level=$logLevel",
         "-Dfile.encoding=UTF-8",
@@ -781,7 +663,7 @@ case class WebConf(home: String,
       "ftsService.clusterName" -> s"$clusterName",
       "cmwell.home" -> s"$home",
       "irwServiceDao.hostName" -> s"$hostName",
-      "ftsService.transportAddress" -> s"$hostName",
+      "ftsService.transportAddress" -> s"$transportAddress",
       "cmwell.rdfDefaultProtocol" -> defaultRdfProtocol
     )
 
@@ -975,203 +857,4 @@ case class DcConf(home: String,
   }
 
   override def getPsIdentifier: String = "log/dc"
-}
-
-//TODO: remove LogstashConf
-// scalastyle:off
-object LogstashConf {
-  def genLogstashConfFile(clusterName: String,
-                          esHost: String,
-                          globalFields: Map[String, String],
-                          logslocation: String,
-                          subDivision: Int): String = {
-    val logsDir = logslocation //s"${instDirs.globalLocation}/cm-well/log"
-
-    def getFileInput(pathToLog: String, fields: Map[String, String] = Map.empty) =
-      s"""
-         |file {
-         | path => "$pathToLog"
-         | add_field => {${(globalFields ++ fields).map(m => s""" "${m._1}" => "${m._2}" """).mkString("\n")}}
-         |}
-      """.stripMargin
-
-    def getRemoteElasticsearchOutput =
-      s"""
-         | elasticsearch {
-         |   hosts => ["$esHost"]
-         |   flush_size => 5000
-         |   idle_flush_time => 30
-         | }
-      """.stripMargin
-
-    def getComponentFieldsMap(component: String, logName: String, componentIndex: Int) =
-      Map("component" -> component, "logName" -> logName, "componentIndex" -> componentIndex.toString)
-
-    def createComponentEntries(component: String, dir: String, amount: Int, logs: List[String]): GenSeq[String] = {
-      (for (i <- 1 to amount)
-        yield {
-          val logDirName = ResourceBuilder.getIndexedName(dir, i)
-          val logDirFullPath = s"$logsDir/$logDirName"
-          logs.map(log => getFileInput(s"$logDirFullPath/$log", getComponentFieldsMap(component, log.split('.')(0), i)))
-        }).flatten
-    }
-
-    val casLogs = createComponentEntries("Cassandra",
-                                         "cas",
-                                         subDivision,
-                                         List("gc.log.*", "stdout.log", "stderr.log", "system.log"))
-    val esLogs = createComponentEntries(
-      "Elasticsearch",
-      "es",
-      subDivision,
-      List(s"${clusterName}_index_indexing_slowlog.log",
-           s"${clusterName}_index_search_slowlog.log",
-           s"${clusterName}.log",
-           "gc.log.*",
-           "stderr.log",
-           "stdout.log")
-    )
-    val esMasterLogs = createComponentEntries(
-      "ElasticsearchMaster",
-      "es-master",
-      1,
-      List(s"${clusterName}_index_indexing_slowlog.log",
-           s"${clusterName}_index_search_slowlog.log",
-           s"${clusterName}.log",
-           "gc.log.*",
-           "stderr.log",
-           "stdout.log")
-    )
-    val wsLogs = createComponentEntries("Ws",
-                                        "ws",
-                                        1,
-                                        List("access.log", "application.log", "gc.log.*", "stderr.log", "stdout.log"))
-    val bgLogs = createComponentEntries(
-      "Bg",
-      "bg",
-      1,
-      List("application.log", "gc.log.*", "heartbeat.log", "stderr.log", "stdout.log")
-    )
-    val ctrlLogs = createComponentEntries(
-      "Ctrl",
-      "ctrl",
-      1,
-      List("application.log", "stderr.log", "stdout.log", "cluster_state.log", "alerts.log", "gc.log.*")
-    )
-    val dcLogs = createComponentEntries("DC", "dc", 1, List("application.log", "stderr.log", "stdout.log", "gc.log.*"))
-
-    s"""
-       |input {
-       |  ${casLogs.mkString("\n")}
-       |  ${esLogs.mkString("\n")}
-       |  ${esMasterLogs.mkString("\n")}
-       |  ${bgLogs.mkString("\n")}
-       |  ${wsLogs.mkString("\n")}
-       |  ${ctrlLogs.mkString("\n")}
-       |  ${dcLogs.mkString("\n")}
-       |}
-       |
-       |filter {
-       | if [component] == "Ctrl" {
-       |   # 18:32:58.198 TKD [cm-well-p-akka.actor.default-dispatcher-3] INFO  cmwell.ctrl.hc.HealthActor - GotHeakupLatencyStats 127.0.0.1 27010 ElasticsearchNode 0 0 0 0 1 23 979
-       |   grok {
-       |     match => [ "message", "%{IPORHOST:ip} %{NUMBER:pid} %{WORD:component} %{NUMBER:p25} %{NUMBER:p50} %{NUMBER:p75} %{NUMBER:p90} %{NUMBER:p99} %{NUMBER:p995} %{NUMBER:max}" ]
-       |   }
-       | }
-       |
-       | if [component] == "Ctrl" {
-       |   grok {
-       |     match => [ "message", "DiskUsage: %{NOTSPACE:device_name} %{NUMBER:device_usage:int}" ]
-       |   }
-       | }
-       |
-       | if [logName] == "access" {
-       |   grok {
-       |    match => ["message", "%{NOTSPACE:date} %{NOTSPACE:time} +%{NOTSPACE:zeros} method=%{WORD:method} uri=%{NOTSPACE:uri} remote-address=%{IPORHOST:ip} status=%{NUMBER:status:int} process-time=%{NUMBER:processTime:int}ms x-forwarded-for=%{NOTSPACE:forward}"]
-       |   }
-       | }
-       | if [logName] == "gc" {
-       |   grok {
-       |     match => ["message", "%{WORD:date}: %{NUMBER:num}: Total time for which application threads were stopped: %{NUMBER:duration:float} %{WORD:seconds}"]
-       |   }
-       | }
-       |}
-       |
-       |output {
-       |  $getRemoteElasticsearchOutput
-       |}
-    """.stripMargin
-  }
-}
-// scalastyle:on
-case class LogstashConf(clusterName: String,
-                        elasticsearchUrl: String,
-                        home: String,
-                        dir: String = "logstash",
-                        sName: String,
-                        subdivision: Int,
-                        hostIp: String)
-    extends ComponentConf(hostIp, s"$home/app/logstash", sName, s"$home/conf/logstash", "logstash.yml", 1) {
-  override def mkScript: ConfFile = {
-    val scriptContent = {
-      val sb = new StringBuilder
-      sb ++= "export PATH="
-      sb ++= home
-      sb ++= "/app/java/bin:"
-      sb ++= home
-      sb ++= "/bin/utils:"
-      sb ++= PATH
-      sb += '\n'
-      sb ++= CHKSTRT
-      sb += '\n'
-      sb ++= BMSG
-      sb += '\n'
-      sb ++= "starter "
-      sb ++= home
-      sb ++= "/app/logstash/cur/bin/logstash agent -f "
-      sb ++= home
-      sb ++= "/conf/logstash/ > "
-      sb ++= home
-      sb ++= "/log/logstash/stdout.log 2> "
-      sb ++= home
-      sb ++= "/log/logstash/stderr.log &"
-      sb.result()
-    }
-    ConfFile("start.sh", scriptContent, true)
-  }
-
-  override def getPsIdentifier: String = "logstash/logstash"
-
-  override def mkConfig: List[ConfFile] = {
-    val confContent = LogstashConf.genLogstashConfFile(clusterName,
-                                                       elasticsearchUrl,
-                                                       Map.empty[String, String],
-                                                       s"$home/log",
-                                                       subdivision)
-    List(ConfFile("logstash.conf", confContent, false))
-  }
-}
-
-case class KibanaConf(hostIp: String, home: String, listenPort: String, listenAddress: String, elasticsearchUrl: String)
-    extends ComponentConf(hostIp, s"$home/app/kibana", "start.sh", s"$home/conf/kibana", "kibana.yml", 1) {
-  override def mkScript: ConfFile = {
-    val scriptContent =
-      s"""
-         |export PATH=$home/bin/utils:$PATH
-         |$CHKSTRT
-         |$BMSG
-         |starter $home/app/kibana/cur/bin/kibana -c $home/conf/kibana/kibana.yml > $home/log/kibana/stdout.log 2> $home/log/kibana/stderr.log &""".stripMargin
-    ConfFile("start.sh", scriptContent, true)
-  }
-
-  override def getPsIdentifier: String = "bin/kibana"
-
-  override def mkConfig: List[ConfFile] = {
-    val m = Map[String, String]("port" -> listenPort,
-                                "host" -> listenAddress,
-                                "elasticsearch_url" -> s"http://$elasticsearchUrl")
-    val confContent = ResourceBuilder.getResource(s"scripts/templates/kibana.yml", m)
-
-    List(ConfFile("kibana.yml", confContent, false))
-  }
 }

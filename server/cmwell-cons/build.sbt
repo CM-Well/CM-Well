@@ -11,7 +11,9 @@ import cmwell.build.{Versions,CMWellBuild}
 libraryDependencies ++= {
   val dm = dependenciesManager.value
   Seq(
-      dm("net.leibman", "semverfi"))
+    dm(("org.scala-lang.modules", "scala-parallel-collections")),
+    dm("nl.gn0s1s", "bump")
+  )
 }
 
 name := "cmwell-cons"
@@ -32,20 +34,16 @@ getExternalComponents := {
   val logger = streams.value
   val dm = dependenciesManager.value
 
-  val casM = dm("org.apache.cassandra", "apache-cassandra") artifacts (Artifact("apache-cassandra", "tar.gz", "tar.gz", "bin")) intransitive()
-  val casF: scala.concurrent.Future[Seq[java.io.File]] = {
-    CMWellBuild.fetchMvnArtifact(casM,scalaVersion.value,scalaBinaryVersion.value,logger.log)
-  }
+  val casF = CMWellBuild.fetchCassandra(Versions.cassandra, logger.log)
 
-  val esM = dm("org.elasticsearch", "elasticsearch") artifacts (Artifact("elasticsearch", "tar.gz", "tar.gz")) intransitive()
-  val esF: scala.concurrent.Future[Seq[java.io.File]] = {
-    CMWellBuild.fetchMvnArtifact(esM,scalaVersion.value,scalaBinaryVersion.value,logger.log)
-  }
+  val esF = CMWellBuild.fetchElasticSearch(Versions.elasticsearch)
 
   val mx4jM = dm("mx4j", "mx4j-tools")
-  val mx4jF: scala.concurrent.Future[Seq[java.io.File]] = {
-    CMWellBuild.fetchMvnArtifact(mx4jM,scalaVersion.value,scalaBinaryVersion.value,logger.log)
-  }
+  val mx4jCoursierModule = coursier.Module(coursier.Organization(mx4jM.organization), coursier.ModuleName(mx4jM.name))
+  val mx4jDependency = coursier.Dependency(mx4jCoursierModule, mx4jM.revision)
+  val mx4jF = coursier.Fetch()
+    .addDependencies(mx4jDependency)
+    .future()
 
   val kafkaF = CMWellBuild.fetchKafka(scalaBinaryVersion.value,Versions.kafka)
 
@@ -61,8 +59,8 @@ getExternalComponents := {
     zk    <- zkF
   } yield {
     val b = Vector.newBuilder[(String,File)]
-    b ++= cas.map(file  => file.name -> file)
-    b ++= es.map(file   => file.name -> file)
+    b += cas
+    b += es
     b ++= mx4j.collect{ case file if file.getName.endsWith(".jar") => file.name -> file}
     b +=  s"kafka-dist-${Versions.kafka}.tgz"       -> kafka
     b +=  s"zookeeper-${Versions.zookeeper}.tar.gz" -> zk
@@ -321,5 +319,3 @@ test in Test := {
 fork in Test := true
 
 baseDirectory in Test := file("cmwell-cons/app")
-
-fullTest := {}

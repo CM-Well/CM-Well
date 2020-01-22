@@ -15,7 +15,6 @@
 package wsutil
 
 import javax.inject.Inject
-
 import cmwell.domain.{FReference, FString}
 import cmwell.fts._
 import cmwell.util.concurrent.retry
@@ -27,8 +26,9 @@ import cmwell.syntaxutils._
 import ld.cmw.{PassiveFieldTypesCache, PassiveFieldTypesCacheTrait}
 import logic.CRUDServiceFS
 
-import scala.concurrent.{duration, ExecutionContext, Future, Promise}
+import scala.concurrent.{ExecutionContext, Future, Promise, duration}
 import duration.DurationInt
+import scala.collection.{BuildFrom, IterableFactory}
 import scala.util.{Failure, Success, Try}
 
 sealed trait RawFieldFilter {
@@ -100,8 +100,6 @@ case class RawMultiFieldFilter(override val fieldOperator: FieldOperator = Must,
     extends RawFieldFilter
 
 object RawFieldFilter extends PrefixRequirement {
-  private[this] val bo1 = scala.collection.breakOut[Seq[RawFieldFilter], FieldFilter, Vector[FieldFilter]]
-  private[this] val bo2 = scala.collection.breakOut[Set[String], FieldFilter, Vector[FieldFilter]]
   def eval(rff: RawFieldFilter,
            cache: PassiveFieldTypesCacheTrait,
            cmwellRDFHelper: CMWellRDFHelper,
@@ -116,7 +114,8 @@ object RawFieldFilter extends PrefixRequirement {
       Future.successful(fieldFilterWithExplicitUrlOpt.get)
     }
     case RawMultiFieldFilter(fo, rs) =>
-      Future.traverse(rs)(eval(_, cache, cmwellRDFHelper, timeContext))(bo1, ec).map(MultiFieldFilter(fo, _))
+      val bf: BuildFrom[Seq[RawFieldFilter], FieldFilter, Seq[FieldFilter]] = rs.iterableFactory
+      Future.traverse(rs)(eval(_, cache, cmwellRDFHelper, timeContext))(bf, ec).map(MultiFieldFilter(fo, _))
     case RawSingleFieldFilter(fo, vo, fk, v) =>
       FieldKey.eval(fk, cache, cmwellRDFHelper, timeContext)(ec).transform {
         case Success(s) if s.isEmpty =>
@@ -128,7 +127,7 @@ object RawFieldFilter extends PrefixRequirement {
         case anyOtherCase =>
           anyOtherCase.map { s =>
             if (s.size == 1) mkSingleFieldFilter(fo, vo, s.head, v)
-            else MultiFieldFilter(fo, s.map(mkSingleFieldFilter(Should, vo, _, v))(bo2))
+            else MultiFieldFilter(fo, s.view.map(mkSingleFieldFilter(Should, vo, _, v)).to(Vector))
           }
       }
   }
@@ -137,7 +136,7 @@ object RawFieldFilter extends PrefixRequirement {
     valueOp match {
       case Equals
           if fieldName.indexOf('$') == 1 ||
-            fieldName.startsWith("system.") ||
+            fieldName.startsWith("system.") && fieldName != "system.parent.parent_hierarchy" ||
             fieldName.startsWith("content.") =>
         SingleFieldFilter(fieldOp, Contains, fieldName, value)
       case _ => SingleFieldFilter(fieldOp, valueOp, fieldName, value)
@@ -152,8 +151,6 @@ object RawSortParam extends LazyLogging {
   type RawFieldSortParam = (Either[UnresolvedFieldKey, DirectFieldKey], FieldSortOrder)
 
   val empty = RawFieldSortParam(Nil)
-  private[this] val bo =
-    scala.collection.breakOut[Set[String], SortParam.FieldSortParam, List[SortParam.FieldSortParam]]
 
 //  private[this] val indexedFieldsNamesCache =
 //    new SingleElementLazyAsyncCache[Set[String]](Settings.fieldsNamesCacheTimeout.toMillis,Set.empty)
@@ -172,7 +169,7 @@ object RawSortParam extends LazyLogging {
 
       Future
         .traverse(rfsp) {
-          case (fk, ord) => FieldKey.eval(fk, cache, cmwellRDFHelper, timeContext).map(_.map(_ -> ord)(bo))
+          case (fk, ord) => FieldKey.eval(fk, cache, cmwellRDFHelper, timeContext).map(_.view.map(_ -> ord).to(List))
           // following code could gives precedence to mangled fields over unmangled ones
         }
         .flatMap(
@@ -221,6 +218,8 @@ object FieldKey extends LazyLogging with PrefixRequirement {
            cache: PassiveFieldTypesCacheTrait,
            cmwellRDFHelper: CMWellRDFHelper,
            timeContext: Option[Long])(implicit ec: ExecutionContext): Future[Set[String]] = fieldKey match {
+    case Right(NnFieldKey(key)) if key == "_all" =>
+      Future.successful(Set("allFields"))
     case Right(NnFieldKey(key)) if key.startsWith("system.") || key.startsWith("content.") || key.startsWith("link.") || key == "_all" =>
       Future.successful(Set(key))
     case Right(dFieldKey) => enrichWithTypes(dFieldKey, cache)

@@ -33,7 +33,7 @@ import scala.concurrent.duration._
   * IllegalArgumentException is thrown.
   */
 object SizeChunker {
-  def apply(maxSize: Int = 25 * 1024, within: FiniteDuration = 3.seconds) = new SizeChunker(maxSize, within)
+  def apply[T](maxSize: Int = 25 * 1024, within: FiniteDuration = 3.seconds) = new SizeChunker[T](maxSize, within)
 }
 
 /**
@@ -42,13 +42,13 @@ object SizeChunker {
   * @param maxSize size threshold
   * @param within timed window length
   */
-class SizeChunker(maxSize: Int, within: FiniteDuration)
-    extends GraphStage[FlowShape[ByteString, immutable.Seq[ByteString]]] {
+class SizeChunker[T](maxSize: Int, within: FiniteDuration)
+  extends GraphStage[FlowShape[(ByteString,T), (immutable.Seq[ByteString],T) ]] {
   require(maxSize > 0, "maxSize must be greater than 0")
   require(within > Duration.Zero)
 
-  val in = Inlet[ByteString]("in")
-  val out = Outlet[scala.collection.immutable.Seq[ByteString]]("out")
+  val in = Inlet[(ByteString,T)]("in")
+  val out = Outlet[(scala.collection.immutable.Seq[ByteString],T)]("out")
 
   override def initialAttributes = Attributes.name("size-chunker")
 
@@ -56,7 +56,7 @@ class SizeChunker(maxSize: Int, within: FiniteDuration)
 
   override def createLogic(inheritedAttributes: Attributes): GraphStageLogic =
     new TimerGraphStageLogic(shape) with InHandler with OutHandler {
-      private var buffer: VectorBuilder[ByteString] = new VectorBuilder
+      private var buffer: VectorBuilder[(ByteString,T)] = new VectorBuilder
       private var totalSizeInBuffer = 0L
 
       // True if:
@@ -77,10 +77,10 @@ class SizeChunker(maxSize: Int, within: FiniteDuration)
         pull(in)
       }
 
-      private def nextElement(elem: ByteString): Unit = {
+      private def nextElement(elem: (ByteString,T)): Unit = {
         groupEmitted = false
         buffer += elem
-        totalSizeInBuffer += elem.size
+        totalSizeInBuffer += elem._1.size
 
         if (isNeedToCloseGroup) {
           schedulePeriodically(ChunkerWithinTimer, within)
@@ -100,7 +100,12 @@ class SizeChunker(maxSize: Int, within: FiniteDuration)
 
       private def emitGroup(): Unit = {
         groupEmitted = true
-        push(out, buffer.result())
+
+        val bufferContents = buffer.result()
+        val emit = bufferContents.map { _._1}
+        val lastState = bufferContents.last._2
+
+        push(out, (emit,lastState))
         buffer.clear()
         if (!finished) startNewGroup()
         else completeStage()

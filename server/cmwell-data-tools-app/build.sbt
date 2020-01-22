@@ -24,5 +24,3 @@ libraryDependencies ++= {
     dm("ch.qos.logback", "logback-classic")
   )
 }
-
-fullTest := (test in Test).value

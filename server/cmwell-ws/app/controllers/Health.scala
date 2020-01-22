@@ -36,9 +36,13 @@ import scala.util._
 /**
  * Created by michael on 8/11/14.
  */
+import collection.JavaConverters._
+
 object HealthUtils {
   val config = ConfigFactory.load()
-  val ip = config.getString("ftsService.transportAddress")
+  val ipList = config.getStringList("ftsService.transportAddress").asScala
+  val ip = ipList(0)
+
   val path = config.getString("user.dir")
 
   /**
@@ -59,7 +63,7 @@ object HealthUtils {
     }
 
     private[this] def getStatus: Future[String] = {
-      val f = Future(ProcUtil.executeCommand(s"JAVA_HOME=$path/../java/bin $path/../cas/cur/bin/nodetool -h $ip status").get)
+      val f = Future(ProcUtil.executeCommand(s"JAVA_HOME=$path/../java/bin $path/../cas/cur/bin/nodetool status").get)
       val p = Promise[String]()
       f.onComplete{
         case Failure(e) => p.failure(e)
@@ -107,7 +111,7 @@ class Health @Inject()(crudServiceFS: CRUDServiceFS, ws: WSClient) extends Injec
   }
 
   def getElasticsearchStatus = {
-    esRequestHelper(s"http://$ip:9201/_status?pretty")
+    esRequestHelper(s"http://$ip:9201/_stats?pretty")
   }
 
   def getElasticsearchThreadPool =  {

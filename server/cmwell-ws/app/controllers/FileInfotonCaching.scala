@@ -73,7 +73,12 @@ abstract class FileInfotonCaching(defaultAssetsMetadata: DefaultAssetsMetadata,
           aggressiveCaching,
           result(content.length,
                  overrideMimetype(mime, request)._2,
-                 Source.single(ByteString.fromArray(content)),
+
+            // We used to have:  Source.single(ByteString.fromArray(content)),
+            // but there's a bug in Play where it terminates connection too early for slow connections if the response is an Array and not Iterator
+            // See https://gist.github.com/bryaakov/da0df0b825c8370a46b7f058279dec45
+                 Source.fromIterator(() => content.grouped(1024).map(ByteString(_))),
+
                  gzipRequested,
                  gzipAvailable),
           dontCache = dontCache

@@ -269,6 +269,13 @@
     <logger name="cmwell.crawler" additivity="false">
         <appender-ref ref="ASYNC_CRAWLER__FILE"/>
     </logger>
+    <!--
+        This logger is for debugging BG indexer stuck issue. To Use:
+        1. Download jmxterm
+        2. run in the affected server: "echo run -b ch.qos.logback.classic:Name=default,Type=ch.qos.logback.classic.jmx.JMXConfigurator setLoggerLevel debug.indexerStream INFO | java -jar jmxterm-1.0.0-uber.jar -l localhost:7196"
+    -->
+    <logger name="debug.indexerStream" level="OFF">
+    </logger>
 
     <root level="${log.level:-INFO}">
         <appender-ref ref="ASYNC_FILE" />

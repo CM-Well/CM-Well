@@ -16,6 +16,8 @@
 
 package cmwell.it
 
+import java.util.concurrent.Executors
+
 import cmwell.tracking.{Failed, InProgress, PathStatus}
 import cmwell.util.concurrent.{retry, unsafeRetryUntil}
 import cmwell.util.http.SimpleResponse
@@ -23,7 +25,7 @@ import com.typesafe.scalalogging.LazyLogging
 import org.scalatest._
 import play.api.libs.json.Json
 
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration._
 
 /**
@@ -97,6 +99,7 @@ class TrackingTests extends AsyncFunSpec with Matchers with Helpers with OptionV
   }
 
   val resurrectedWithDirtyData: Future[Assertion] = {
+    implicit val ex = ExecutionContext.fromExecutor(Executors.newWorkStealingPool(5))
     val tid = "CAAAdGVzdEFjdG9yMnwxNDkwMjYyMzkwNTYx" // encodeBase64URLSafeString(compress("testActor2|1490262390561"))
 
     val rd1Path = "/tracking.tests.com/rd1"
@@ -107,8 +110,7 @@ class TrackingTests extends AsyncFunSpec with Matchers with Helpers with OptionV
     // test should succeed because Infoton's lastModified (i.e. DateTime.now) isAfter 1490262390561
     val expectedResults = s"""<http:/$rd1Path> <$statusPredicate> "Done" .\n"""
 
-    val ingestInfotonAndWaitUntilItIsPersisted: Future[Unit] = Http.post(_in, ntriples, textPlain, trackingQueryParams, tokenHeader).
-      flatMap { resp =>
+    val ingestInfotonAndWaitUntilItIsPersisted = Http.post(_in, ntriples, textPlain, trackingQueryParams, tokenHeader).flatMap { resp =>
         jsonSuccessPruner(Json.parse(resp.payload)) shouldBe jsonSuccess
         def ready(resp: SimpleResponse[String]) = resp.status == 200 && resp.payload.split("\n").exists(_.contains("indexTime"))
         unsafeRetryUntil[SimpleResponse[String]](ready,10,500.millis)(Http.get(rd1Url, List("format"->"ntriples"))).map(_ => ())
@@ -117,7 +119,8 @@ class TrackingTests extends AsyncFunSpec with Matchers with Helpers with OptionV
 
     ingestInfotonAndWaitUntilItIsPersisted.zip(simulateDeadActor).flatMap{ case (_, simulateStatus) =>
       simulateStatus shouldBe 200
-      Http.get(_track / tid).map(_.payload should equal(expectedResults))
+      val sc = spinCheck(500 milliseconds)(Http.get(_track / tid)){_.payload == expectedResults}
+      sc.map(_.payload should equal(expectedResults))
     }
   }
 
@@ -198,7 +201,7 @@ class TrackingTests extends AsyncFunSpec with Matchers with Helpers with OptionV
 
   private def simulateDeadTrackingActor(actorName: String, data: Seq[PathStatus]): Future[Int] = {
     val uzid = s"ta-$actorName"
-    val payload = data.map{ case PathStatus(p,s) => s"$p\0$s" }.mkString("\n").getBytes("UTF-8")
+    val payload = data.map{ case PathStatus(p,s) => s"${p}\u0000$s" }.mkString("\n").getBytes("UTF-8")
     Http.post(cmw / "zz" / uzid, payload, headers = tokenHeader).map(_.status)
   }
 

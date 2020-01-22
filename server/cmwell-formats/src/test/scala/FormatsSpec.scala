@@ -34,37 +34,50 @@ class FormatsSpec extends FunSpec with Matchers with Helpers {
     val date = new DateTime("1985-11-25T18:43:00.000Z")
     val defaultFields = Map("field1"->Set[FieldValue](FString("value1")))
     val infotons = Map(
-      'simpleObjectInfoton -> ObjectInfoton(
+      'simpleObjectInfoton -> ObjectInfoton(SystemFields(
         "simpleObjectInfoton",
+        date,
+        "Baruch",
         "dc_test",
         None,
-        date,
-        defaultFields, None),
-      'objectInfotonWithQuads -> ObjectInfoton(
+        "",
+        "http"),
+        defaultFields),
+      'objectInfotonWithQuads -> ObjectInfoton(SystemFields(
         "objectInfotonWithQuads",
+        date,
+        "Baruch",
         "dc_test",
         None,
-        date,
-        Map("field1"->Set[FieldValue](FString("value1", None, Some("spiderman")))), None),
-      'fileInfoton -> FileInfoton(
+        "",
+        "http"),
+        Map("field1"->Set[FieldValue](FString("value1", None, Some("spiderman"))))),
+      'fileInfoton -> FileInfoton(SystemFields(
         "fileInfoton",
+        date,
+        "Baruch",
         "dc_test",
         None,
-        date,
+        "",
+        "http"),
         defaultFields,
-        FileContent("CAFEBABE".getBytes("UTF8"), "application/java-byte-code"), None),
-      'compoundInfoton -> CompoundInfoton(
+        FileContent("CAFEBABE".getBytes("UTF8"), "application/java-byte-code")),
+      'compoundInfoton -> CompoundInfoton(SystemFields(
         "compoundInfoton",
+        date,
+        "Baruch",
         "dc_test",
         None,
-        date,
+        "",
+        "http"),
         Some(defaultFields),
-        Seq(ObjectInfoton("first-child","dc_test",None,date, protocol = None)), 0, 1, 1, protocol = None)
+        Seq(ObjectInfoton(SystemFields("first-child",date, "Baruch", "dc_test",None, "", "http"))), 0, 1, 1)
     )
 
     def assertSystemFields(i: Infoton, jsonl: JsValue) = {
-      Seq("@id"->i.path, "type" -> i.kind, "uuid" -> i.uuid, "path" -> i.path, "parent" -> i.parent, "lastModified" -> dateStringify(i.lastModified)).foreach {
-        case (key, expectedValue) => jsonl.getValueOfFirst(s"$key.sys") should be(expectedValue)
+      Seq("@id"->i.systemFields.path, "type" -> i.kind, "uuid" -> i.uuid, "path" -> i.systemFields.path, "parent" -> i.parent,
+        "lastModified" -> dateStringify(i.systemFields.lastModified), "lastModifiedBy" -> i.systemFields.lastModifiedBy).foreach {
+          case (key, expectedValue) => jsonl.getValueOfFirst(s"$key.sys") should be(expectedValue)
       }
     }
 

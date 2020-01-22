@@ -30,6 +30,7 @@ class LinkInfotonTests extends AsyncFunSpec with Matchers with Helpers with Lazy
     val expected = Json.obj(
       "type"   -> "ObjectInfoton",
       "system" -> Json.obj(
+        "lastModifiedBy"       -> "pUser",
         "path"       -> "/cmt/cm/test/InfoObj3",
         "parent"     -> "/cmt/cm/test",
         "dataCenter" -> dcName),
@@ -110,6 +111,7 @@ class LinkInfotonTests extends AsyncFunSpec with Matchers with Helpers with Lazy
            |    {
            |      "type": "LinkInfoton",
            |      "system": {
+           |        "lastModifiedBy": "pUser",
            |        "path": "/en.wikipedia.org/wiki/cyrtantheae",
            |        "parent": "/en.wikipedia.org/wiki",
            |        "dataCenter": "lh"
@@ -125,10 +127,10 @@ class LinkInfotonTests extends AsyncFunSpec with Matchers with Helpers with Lazy
       spinCheck(100.millis, true)(Http.post(_out, "/en.wikipedia.org/wiki/cyrtantheae", Some("text/plain;charset=UTF-8"), List("format" -> "json"),
         tokenHeader)) { res => Json.parse(res.payload).transform(bagUuidDateEraserAndSorter).get == expected }
         .map { res =>
-        withClue(res) {
-          Json.parse(res.payload).transform(bagUuidDateEraserAndSorter).get should be(expected)
+          withClue(res) {
+            Json.parse(res.payload).transform(bagUuidDateEraserAndSorter).get should be(expected)
+          }
         }
-      }
     })
 
     it("should succeed posting ObjectInfoton & LinkInfoton")(postLinkAndObj)

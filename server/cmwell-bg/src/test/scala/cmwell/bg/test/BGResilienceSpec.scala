@@ -14,9 +14,9 @@
   */
 package cmwell.bg.test
 
-import java.util.Properties
-
+import java.util.concurrent.Executors
 import akka.actor.{ActorRef, ActorSystem}
+import akka.util.Timeout
 import cmwell.bg.{CMWellBGActor, ShutDown}
 import cmwell.common.{CommandSerializer, OffsetsService, WriteCommand, ZStoreOffsetsService}
 import cmwell.domain.{FieldValue, ObjectInfoton}
@@ -24,22 +24,21 @@ import cmwell.driver.Dao
 import cmwell.fts._
 import cmwell.irw.IRWService
 import cmwell.zstore.ZStore
-import com.typesafe.config.{Config, ConfigFactory, ConfigValueFactory}
+import com.typesafe.config.{Config, ConfigValueFactory}
 import com.typesafe.scalalogging.LazyLogging
 import org.apache.kafka.clients.producer.{KafkaProducer, ProducerRecord}
-import org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest
-import org.elasticsearch.common.unit.TimeValue
-import org.scalatest.{BeforeAndAfterAll, DoNotDiscover, FlatSpec, Matchers}
+import org.scalatest.{AsyncFlatSpec, BeforeAndAfterAll, Inspectors, Matchers}
 
-import scala.concurrent.Await
+import scala.concurrent.{Await, ExecutionContext, Future}
+import akka.pattern.ask
+import domain.testUtil.InfotonGenerator.genericSystemFields
+
 import scala.concurrent.duration._
-import scala.io.Source
 
 /**
   * Created by israel on 13/09/2016.
   */
-@DoNotDiscover
-class BGResilienceSpec  extends FlatSpec with BeforeAndAfterAll with Matchers with LazyLogging {
+class BGResilienceSpec extends AsyncFlatSpec with BeforeAndAfterAll with BgEsCasKafkaZookeeperDockerSuite with Matchers with LazyLogging with Inspectors {
 
   var kafkaProducer:KafkaProducer[Array[Byte], Array[Byte]] = _
   var cmwellBGActor:ActorRef = _
@@ -48,81 +47,41 @@ class BGResilienceSpec  extends FlatSpec with BeforeAndAfterAll with Matchers wi
   var irwService:IRWService = _
   var zStore:ZStore = _
   var offsetsService:OffsetsService = _
-  var ftsServiceES:FTSServiceNew = _
+  var ftsServiceES:FTSService = _
   var bgConfig:Config = _
   var actorSystem:ActorSystem = _
-  import concurrent.ExecutionContext.Implicits.global
+
+  implicit val ec = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(50))
 
   override def beforeAll = {
-
-    val producerProperties = new Properties
-    producerProperties.put("bootstrap.servers", "localhost:9092")
-    producerProperties.put("key.serializer", "org.apache.kafka.common.serialization.ByteArraySerializer")
-    producerProperties.put("value.serializer", "org.apache.kafka.common.serialization.ByteArraySerializer")
-    kafkaProducer = new KafkaProducer[Array[Byte], Array[Byte]](producerProperties)
-
-    dao = Dao("Test","data2")
+    //notify ES to not set Netty's available processors
+    System.setProperty("es.set.netty.runtime.available.processors", "false")
+    kafkaProducer = BgTestHelpers.kafkaProducer(s"${kafkaContainer.containerIpAddress}:${kafkaContainer.mappedPort(9092)}")
+    // scalastyle:on
+    dao = BgTestHelpers.dao(cassandraContainer.containerIpAddress, cassandraContainer.mappedPort(9042))
     testIRWMockupService = FailingIRWServiceMockup(dao, 13)
     zStore = ZStore(dao)
     irwService = IRWService.newIRW(dao, 25 , true, 0.seconds)
     offsetsService = new ZStoreOffsetsService(zStore)
-    ftsServiceES = FailingFTSServiceMockup("es.test.yml", 5)
-
-
-    // wait for green status
-    ftsServiceES.client.admin().cluster()
-      .prepareHealth()
-      .setWaitForGreenStatus()
-      .setTimeout(TimeValue.timeValueMinutes(5))
-      .execute()
-      .actionGet()
-
-    // delete all existing indices
-    ftsServiceES.client.admin().indices().delete(new DeleteIndexRequest("_all"))
-
-    // load indices template
-    val indicesTemplate = Source.fromURL(this.getClass.getResource("/indices_template_new.json")).getLines.reduceLeft(_ + _)
-    ftsServiceES.client.admin().indices().preparePutTemplate("indices_template").setSource(indicesTemplate).execute().actionGet()
-
-    // create current index
-    ftsServiceES.client.admin().indices().prepareCreate("cm_well_0").execute().actionGet()
-
-    ftsServiceES.client.admin().indices().prepareAliases()
-      .addAlias("cm_well_0", "cm_well_all")
-      .addAlias("cm_well_0", "cm_well_latest")
-      .execute().actionGet()
-
-
-
-    bgConfig = ConfigFactory.load
-    bgConfig.withValue("cmwell.bg.esActionsBulkSize", ConfigValueFactory.fromAnyRef(100))
-
+    val ftsOverridesConfig = BgTestHelpers.ftsOverridesConfig(elasticsearchContainer.containerIpAddress, elasticsearchContainer.mappedPort(9300))
+    ftsServiceES = FailingFTSServiceMockup(ftsOverridesConfig, 5)
+    // delete all existing indices - not needed the docker is started fresh every time
+    //ftsServiceES.client.admin().indices().delete(new DeleteIndexRequest("_all"))
+    BgTestHelpers.initFTSService(ftsServiceES)
+    bgConfig = ftsOverridesConfig
+      .withValue("cmwell.bg.esActionsBulkSize", ConfigValueFactory.fromAnyRef(100))
+      .withValue("cmwell.bg.kafka.bootstrap.servers", ConfigValueFactory.fromAnyRef(s"${kafkaContainer.containerIpAddress}:${kafkaContainer.mappedPort(9092)}"))
     actorSystem = ActorSystem("cmwell-bg-test-system")
-
     cmwellBGActor = actorSystem.actorOf(CMWellBGActor.props(0, bgConfig, testIRWMockupService, ftsServiceES, zStore, offsetsService))
-
-    // scalastyle:off
-    println("waiting 10 seconds for all components to load")
-    Thread.sleep(10000)
-    // scalastyle:on
-
   }
 
   "Resilient BG" should "process commands as usual on circumvented BGActor (periodically failing IRWService) after suspending and resuming" in {
 
-    logger info "waiting 10 seconds for circumvented BGActor to start"
-
-    Thread.sleep(10000)
-
     val numOfCommands = 1500
     // prepare sequence of writeCommands
     val writeCommands = Seq.tabulate(numOfCommands){ n =>
-      val infoton = ObjectInfoton(
-        path = s"/cmt/cm/bg-test/circumvented_bg/info$n",
-        dc = "dc",
-        indexTime = None,
-        fields = Some(Map("games" -> Set(FieldValue("Taki"), FieldValue("Race")))),
-        protocol = None)
+      val infoton = ObjectInfoton(genericSystemFields.copy(path = s"/cmt/cm/bg-test/circumvented_bg/info$n", dc = "dc", lastModifiedBy = "Baruch"),
+        fields = Some(Map("games" -> Set(FieldValue("Taki"), FieldValue("Race")))))
       WriteCommand(infoton)
     }
 
@@ -133,43 +92,42 @@ class BGResilienceSpec  extends FlatSpec with BeforeAndAfterAll with Matchers wi
     }
 
     // send them all
-    pRecords.foreach { kafkaProducer.send(_)}
+    pRecords.foreach {kafkaProducer.send(_)}
 
-    // scalastyle:off
-    println("waiting for 10 seconds")
-    Thread.sleep(10000)
-    // scalastyle:on
-
-    for( i <- 0 until numOfCommands) {
-      val nextResult = Await.result(irwService.readPathAsync(s"/cmt/cm/bg-test/circumvented_bg/info$i"), 5.seconds)
-      withClue(nextResult, s"/cmt/cm/bg-test/circumvented_bg/info$i"){
-        nextResult should not be empty
-      }
+    val casCheck = Future.traverse((0 until numOfCommands).toList) {i =>
+      cmwell.util.concurrent.spinCheck(1.second, true, 60.seconds) {
+        irwService.readPathAsync(s"/cmt/cm/bg-test/circumvented_bg/info$i")} ( _.nonEmpty )
     }
 
-    for( i <- 0 until numOfCommands) {
-      val searchResponse = Await.result(
+    val esCheck = cmwell.util.concurrent.spinCheck(1.second, true, 120.seconds) {
+      try{
         ftsServiceES.search(
           pathFilter = None,
-          fieldsFilter = Some(SingleFieldFilter(Must, Equals, "system.path", Some(s"/cmt/cm/bg-test/circumvented_bg/info$i"))),
+          fieldsFilter = Some(MultiFieldFilter(Must, Seq(
+              FieldFilter(Must, Equals, "system.parent.parent_hierarchy", s"/cmt/cm/bg-test/circumvented_bg"),
+              FieldFilter(Must, Equals, "system.lastModifiedBy", "Baruch")))),
           datesFilter = None,
-          paginationParams = PaginationParams(0, 200)
-        ),
-        10.seconds
-      )
-      withClue(s"/cmt/cm/bg-test/circumvented_bg/info$i"){
-        searchResponse.infotons.size should equal(1)
-      }
+          paginationParams = PaginationParams(0, 1)
+        )
+      } catch {case _ : Throwable => Future.failed(new RuntimeException)}
+    } (_.total == 1500)
+
+    for {
+      es <- esCheck
+      cas <- casCheck
+    } yield {
+      es.total should equal(numOfCommands)
+      forAll(cas) ( _ should not be empty)
     }
+
   }
 
   override def afterAll() = {
-    logger debug "afterAll: sending Shutdown"
-    cmwellBGActor ! ShutDown
-    Thread.sleep(10000)
+    val timeout = 30.seconds
+    val future = (cmwellBGActor ? ShutDown)(Timeout(timeout))
+    val result = Await.result(future, timeout)
     ftsServiceES.shutdown()
-    testIRWMockupService = null
-    irwService = null
+    dao.shutdown()
+    kafkaProducer.close()
   }
-
 }

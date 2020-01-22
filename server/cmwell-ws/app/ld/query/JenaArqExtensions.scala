@@ -46,7 +46,7 @@ import org.joda.time.DateTime
 import org.joda.time.format.{DateTimeFormatter, ISODateTimeFormat}
 import org.apache.jena.sparql.engine.{ExecutionContext => JenaExecutionContext}
 
-import scala.collection.JavaConversions._
+import scala.collection.JavaConverters._
 import scala.collection.mutable.ArrayBuffer
 import scala.concurrent.Await
 import scala.concurrent.duration._
@@ -90,14 +90,14 @@ class SortingAndMappingStageGenerator(jenaArqExtensionsUtils: JenaArqExtensionsU
 
     ec.getActiveGraph match {
       case graph: CmWellGraph =>
-        logger.debug(s"[arq][FLOW] execute was invoked with ${basicPattern.getList.length} triplePatterns")
+        logger.debug(s"[arq][FLOW] execute was invoked with ${basicPattern.getList.size} triplePatterns")
 
-        val needToOptimize = basicPattern.getList.length > 1 && !graph.dsg.config.doNotOptimize
+        val needToOptimize = basicPattern.getList.size > 1 && !graph.dsg.config.doNotOptimize
 
         if (needToOptimize)
-          graph.dsg.logVerboseMsg("Plan", s"Optimizing ${basicPattern.getList.length} statements...")
+          graph.dsg.logVerboseMsg("Plan", s"Optimizing ${basicPattern.getList.size} statements...")
 
-        val mappedTriplePatterns = Try(basicPattern.getList.map { trpl =>
+        val mappedTriplePatterns: collection.Seq[Triple] = Try(basicPattern.getList.asScala.map { trpl =>
           val internalReprPredicate = jenaArqExtensionsUtils.predicateToInnerRepr(trpl.getPredicate)
           new Triple(trpl.getSubject, internalReprPredicate, trpl.getObject)
         }) match {
@@ -250,7 +250,7 @@ trait DataFetcher {
                 State(intermediateLimit, first.infotons.getOrElse(Seq.empty[Infoton]).length, first.totalHits))
         ) {
           case Chunk(iid, data, State(intermediateLimit, c, t)) =>
-            val ir = Await.result(crudServiceFS.scroll(iid, 60, withData = true), 9.seconds)
+            val ir = Await.result(crudServiceFS.scroll(iid, 60, withData = true, debugInfo = false), 9.seconds)
             val data = ir.infotons.getOrElse(Seq.empty[Infoton])
             Chunk(ir.iteratorId, data, State(config.intermediateLimit, c + data.length, t))
         }
@@ -282,7 +282,7 @@ class CmWellGraph(val dsg: DatasetGraphCmWell) extends GraphBase with LazyLoggin
   logger.debug("[arq][FLOW] CmWellGraph was instansiated")
 
   override def graphBaseFind(triple: Triple): ExtendedIterator[Triple] = {
-    val data = dsg.findInDftGraph(triple.getSubject, triple.getPredicate, triple.getObject).map(_.asTriple)
+    val data = dsg.findInDftGraph(triple.getSubject, triple.getPredicate, triple.getObject).asScala.map(_.asTriple)
     new ExtendedIterator[Triple] {
       override def filterKeep(f: Predicate[Triple]): ExtendedIterator[Triple] = ???
       override def filterDrop(f: Predicate[Triple]): ExtendedIterator[Triple] = ???
@@ -366,7 +366,7 @@ class DatasetGraphCmWell(val host: String,
   override def findInDftGraph(s: Node, p: Node, o: Node): util.Iterator[Quad] = {
     if (config.deadline.exists(_.isOverdue)) {
       logMsgOnce("Warning", "Query was timed out")
-      Iterator[Quad]()
+      Iterator[Quad]().asJava
     } else {
       doFindInDftGraph(s, p, o)
     }
@@ -462,7 +462,7 @@ class DatasetGraphCmWell(val host: String,
 
           def scroll(iteratorId: Option[String] = None) = {
             val scrollRes = Await.result(
-              crudServiceFS.scroll(iteratorId.getOrElse(currentChunk.iteratorId), 60, withData = true),
+              crudServiceFS.scroll(iteratorId.getOrElse(currentChunk.iteratorId), 60, withData = true, debugInfo = false),
               9.seconds
             )
             val quads = infotonsToQuadIterator(scrollRes.infotons.getOrElse(Seq.empty[Infoton]))
@@ -515,10 +515,10 @@ class DatasetGraphCmWell(val host: String,
         }
       }
 
-    results.map(jenaArqExtensionsUtils.normalizeAsOutput)
+    results.map(jenaArqExtensionsUtils.normalizeAsOutput).asJava
   }
 
-  override def listGraphNodes(): util.Iterator[Node] = Iterator[Node]() // this is a hack
+  override def listGraphNodes(): util.Iterator[Node] = Iterator[Node]().asJava// this is a hack
 
   override def toString = "< CmWell DatasetGraph (AKA JenaDriver) >"
 
@@ -563,6 +563,7 @@ class DatasetGraphCmWell(val host: String,
     JenaUtils
       .discardQuadsAndFlattenAsTriples(ds)
       .listStatements
+      .asScala
       .map(stmt => new Quad(g, stmt.getSubject.asNode, stmt.getPredicate.asNode, stmt.getObject.asNode))
   }
 

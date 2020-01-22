@@ -254,13 +254,13 @@ class DashBoard @Inject()(crudServiceFS: CRUDServiceFS)(implicit ec: ExecutionCo
       (clr, s"${upNormal.size} Up / ${xs.size}")
     }
 
-    wsTuple.onFailure {
+    wsTuple.failed.foreach {
       case ex: Throwable => logger.error("data could not be retrieved for ws.", ex)
     }
-    esTuple.onFailure {
+    esTuple.failed.foreach {
       case ex: Throwable => logger.error("data could not be retrieved for es.", ex)
     }
-    caTuple.onFailure {
+    caTuple.failed.foreach {
       case ex: Throwable => logger.error("data could not be retrieved for ca.", ex)
     }
 
@@ -379,29 +379,29 @@ class DashBoard @Inject()(crudServiceFS: CRUDServiceFS)(implicit ec: ExecutionCo
       )
       xs.foreach {
         case (h, (c1, c2, c3, c4)) => {
-          c1.onSuccess {
-            case c: Color => {
+          c1.foreach {
+            c: Color => {
               val clrTup = updateColor(detail.get(h), Some(c), None, None, None)
               detail = detail.updated(h, clrTup)
               detailTime = new DateTime()
             }
           }
-          c2.onSuccess {
-            case c: Color => {
+          c2.foreach {
+            c: Color => {
               val clrTup = updateColor(detail.get(h), None, Some(c), None, None)
               detail = detail.updated(h, clrTup)
               detailTime = new DateTime()
             }
           }
-          c3.onSuccess {
-            case c: Color => {
+          c3.foreach {
+            c: Color => {
               val clrTup = updateColor(detail.get(h), None, None, Some(c), None)
               detail = detail.updated(h, clrTup)
               detailTime = new DateTime()
             }
           }
-          c4.onSuccess {
-            case c: Color => {
+          c4.foreach {
+            c: Color => {
               val clrTup = updateColor(detail.get(h), None, None, None, Some(c))
               detail = detail.updated(h, clrTup)
               detailTime = new DateTime()
