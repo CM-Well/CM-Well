@@ -108,9 +108,9 @@ jobs:
           echo "Scala does not exist! Going to download"
           wget https://downloads.lightbend.com/scala/$scalaVersion/scala-$scalaVersion.tgz
           sudo tar -xf scala-$scalaVersion.tgz
-          sudo ln -s `pwd`/scala-$scalaVersion/bin/scala /usr/local/bin/scala
         else
-          echo "Scala exist"
+          echo "Scala exist. Will only create the sym-link"
+          sudo ln -s `pwd`/scala-$scalaVersion/bin/scala /usr/local/bin/scala
         fi
     - name: Integration Tests
       timeout-minutes: 30
