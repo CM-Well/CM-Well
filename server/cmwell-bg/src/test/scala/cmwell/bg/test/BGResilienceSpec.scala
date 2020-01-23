@@ -99,7 +99,7 @@ class BGResilienceSpec extends AsyncFlatSpec with BeforeAndAfterAll with BgEsCas
         irwService.readPathAsync(s"/cmt/cm/bg-test/circumvented_bg/info$i")} ( _.nonEmpty )
     }
 
-    val esCheck = cmwell.util.concurrent.spinCheck(1.second, true, 120.seconds) {
+    val esCheck = cmwell.util.concurrent.spinCheck(1.second, true, 180.seconds) {
       try{
         ftsServiceES.search(
           pathFilter = None,
