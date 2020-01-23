@@ -13,9 +13,22 @@ jobs:
   unitTests:
     runs-on: ubuntu-18.04
 
-    steps:
+    steps:  
       - name: Checkout code
         uses: actions/checkout@v1
+      - name: Cache .ivy2
+        uses: actions/cache@v1
+        with:
+          path: /home/runner/.ivy2
+          key: cmwell-unitTests-ivy2-${{ hashFiles('**/build.sbt') }}
+          restore-keys: cmwell-unitTests-ivy2
+      - name: Cache coursier
+        uses: actions/cache@v1
+        with:
+          path: /home/runner/.cache/coursier
+          key: cmwell-unitTests-coursier-${{ hashFiles('**/build.sbt') }}
+          restore-keys: cmwell-unitTests-coursier
+
       - name: Compile
         timeout-minutes: 10
         working-directory: server
@@ -66,15 +79,42 @@ jobs:
 ##################################### 
   integrationTests:
     runs-on: ubuntu-18.04
-
-    steps:
+    steps:         
     - name: Checkout code
       uses: actions/checkout@v1
+    - name: Cache ivy2
+      uses: actions/cache@v1
+      with:
+        path: /home/runner/.ivy2
+        key: cmwell-it-ivy2-${{ hashFiles('**/build.sbt') }}
+        restore-keys: cmwell-it-ivy2
+    - name: Cache coursier
+      uses: actions/cache@v1
+      with:
+        path: /home/runner/.cache/coursier
+        key: cmwell-it-coursier-${{ hashFiles('**/build.sbt') }}
+        restore-keys: cmwell-it-coursier
+    - name: Cache Scala 2.13
+      uses: actions/cache@v1
+      with:
+        path: /home/runner/scala
+        key: scala-${{ hashFiles('**/extract-java-scala.sh') }}
     - name: Install Scala
       run: |
-        wget https://downloads.lightbend.com/scala/2.13.1/scala-2.13.1.tgz
-        sudo tar -xf scala-2.13.1.tgz
-        sudo ln -s `pwd`/scala-2.13.1/bin/scala /usr/local/bin/scala
+        scalaLocation="/home/runner/scala"
+        scalaVersion=$(grep "scalaVersion in Global" /home/runner/work/CM-Well/CM-Well/server/build.sbt | awk '{print $NF}' | tr -d \")
+        if [ ! -d "$scalaLocation/scala-$scalaVersion" ]; then
+          echo "Scala does not exist! Going to download"
+          mkdir $scalaLocation
+          cd $scalaLocation
+          wget https://downloads.lightbend.com/scala/$scalaVersion/scala-$scalaVersion.tgz
+          sudo tar -xf scala-$scalaVersion.tgz
+          sudo ln -s $scalaLocation/scala-$scalaVersion/bin/scala /usr/local/bin/scala
+        else
+          echo "Scala exist. Will only create the sym-link"
+          sudo ln -s $scalaLocation/scala-$scalaVersion/bin/scala /usr/local/bin/scala
+        fi
+
     - name: Integration Tests
       timeout-minutes: 30
       working-directory: server
@@ -89,7 +129,7 @@ jobs:
       with:
         name: itLogs
         path: server/cmwell-it/target/logs
-
+ 
     - name: Save Integration Tests Logs (server logs)
       uses: actions/upload-artifact@v1
       if: always()
