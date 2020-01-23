@@ -18,7 +18,9 @@
 
 ### First example: Redirection
 
-```/meta/services/company
+```
+/meta/services/company
+
 type.rdf:		cmwell://meta/sys#Redirection
 route:			/company/
 regex:			/company/$1
@@ -32,11 +34,13 @@ replacement:	/permid.org/1-$1
 
 ```
 /meta/src/echo-service (FileInfoton)
+
 def main(args: Array[String]) = s"<html><u>${args.head}</u></html>"
 ```
 
 ```
 /meta/services/echo
+
 type.rdf:		cmwell://meta/sys#Source
 route:			/echo/
 src:			/meta/src/echo-service
