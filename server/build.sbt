@@ -36,7 +36,9 @@ def stripTime(version: String) = version match {
 ThisBuild / version ~= stripTime
 ThisBuild / dynver ~= stripTime
 
+//Do not change the format of the line below, it will affect (badly) the CI-CD in github
 scalaVersion in Global := "2.13.1"
+
 //javacOptions ++= Seq("-source", "1.8", "-target", "1.8", "-Xlint")
 initialize := {
   import nl.gn0s1s.bump.SemVer
