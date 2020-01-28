@@ -6,7 +6,7 @@ If you wish to retrieve a large number of infotons, but you want to iterate over
 
 The process requires two different API calls:
 
-1. Call **create-iterator** to receive an iterator ID (in the **iteratorId** field) for the query.
+1. Call **create-iterator** with op=create-iterator to receive an iterator ID (in the **iteratorId** field) for the query.
 2. Repeatedly call **next-chunk**, while passing the iterator ID that you received in the **iteratorId** field in the previous chunk results. The process ends when CM-Well returns an empty list.
 
 ## Syntax
@@ -49,7 +49,8 @@ Curl -X GET <cm-well-host>/permid.org?op=next-chunk&format=json&iterator-id=YWtr
 Parameter | Description&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; | Values&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; | Example
 :----------|:-------------|:--------|:---------
 session-ttl | The time, in milliseconds, until the iteration session expires. The iteration token is only valid for this length of time. The default value is 15 seconds; the maximal value is 60 seconds. | A positive integer up to 60. | session-ttl=20
-format | The output format of the streamed chunks. The default value is **ntriples**. | See [Query Parameters](../../APIReference/UsageTopics/API.QueryParameters.md). | format=ttl
+format | The output format of the streamed chunks. The default value is **Atom Feed**. | See [Query Parameters](../../APIReference/UsageTopics/API.QueryParameters.md). | format=ttl
+length | The number of results for each chunk. The default value is 10. | See [Query Parameters](../../APIReference/UsageTopics/API.QueryParameters.md). | length=10
 
 ## Code Example
 
