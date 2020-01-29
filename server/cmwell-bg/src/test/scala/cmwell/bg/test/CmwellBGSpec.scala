@@ -16,7 +16,7 @@
 
 package cmwell.bg.test
 
-import domain.testUtil.InfotonGenerator.genericSystemFields
+import cmwell.domain.testUtil.InfotonGenerator.genericSystemFields
 import java.nio.file.{Files, Paths}
 
 import akka.actor.{ActorRef, ActorSystem}
