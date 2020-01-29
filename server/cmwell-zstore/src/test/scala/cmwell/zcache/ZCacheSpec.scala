@@ -16,18 +16,21 @@
 
 package cmwell.zcache
 
+import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicInteger
 
 import cmwell.util.concurrent.delayedTask
 import cmwell.zstore.ZStoreMem
 import org.scalatest.{AsyncFunSpec, Matchers}
+
 import scala.concurrent.duration._
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 
 /**
   * Created by yaakov on 12/12/16.
   */
 class ZCacheSpec extends AsyncFunSpec with Matchers {
+
   val zCacheMem = new ZCache(new ZStoreMem)
 
   val ttl = 3
@@ -55,7 +58,7 @@ class ZCacheSpec extends AsyncFunSpec with Matchers {
   }
 
   it("should wait and see that item was gone") {
-    delayedTask((ttl+1).seconds)(Unit).flatMap { _ =>
+    delayedTask((ttl+1).seconds)(()).flatMap { _ =>
       zCacheMem.get("foo")(btos, pollingMaxRetries, pollingInterval).map(_ should be(None))
     }
   }
@@ -74,7 +77,7 @@ class ZCacheSpec extends AsyncFunSpec with Matchers {
     fetchData)(
     digest = identity, deserializer = btos, serializer = stob)(
     ttl, pollingMaxRetries, pollingInterval)(
-    scala.concurrent.ExecutionContext.global)
+    ExecutionContext.fromExecutor(Executors.newWorkStealingPool(10)))
 
   val fetchViaL1L2 = l1l2(fetchData)(identity, btos, stob)(ttl, pollingMaxRetries, pollingInterval)(zCacheMem)
 

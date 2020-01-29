@@ -112,7 +112,6 @@ object Settings {
   lazy val gridSeeds = Set.empty[String] ++ config.getString("cmwell.grid.seeds").split(";")
   lazy val clusterName = config.getString("cmwell.clusterName")
 
-  lazy val authSystemVersion = config.getInt("auth.system.version")
   lazy val expansionLimit = config.getInt("webservice.xg.limit")
   lazy val chunkSize = config.getBytes("webservice.max.chunk.size")
   lazy val maxOffset = config.getInt("webservice.max-offset")
@@ -155,4 +154,7 @@ object Settings {
   lazy val zCachePollingMaxRetries = config.getInt("cmwell.ws.zcache.pollingMaxRetries")
   lazy val zCachePollingIntervalSeconds = config.getInt("cmwell.ws.zcache.pollingIntervalSeconds")
   lazy val zCacheL1Size = config.getInt("cmwell.ws.zcache.L1Size")
+
+  lazy val servicesRoutesCacheInitialDelay = config.getInt("cmwell.ws.services-routes-cache.initial-delay-seconds").seconds
+  lazy val servicesRoutesCacheRefreshInterval = config.getInt("cmwell.ws.services-routes-cache.refresh-interval-seconds").seconds
 }

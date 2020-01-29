@@ -23,10 +23,10 @@ import akka.kafka.scaladsl.Consumer
 import akka.stream.{KillSwitch, KillSwitches, SourceShape}
 import akka.stream.scaladsl.{GraphDSL, Keep, MergePreferred, Source}
 import cmwell.common.formats.{BGMessage, CompleteOffset}
-import cmwell.common.{Command, CommandSerializer}
+import cmwell.common.{Command, CommandSerializer, SingleCommand}
 import com.typesafe.scalalogging.LazyLogging
 import org.apache.kafka.clients.consumer.ConsumerConfig
-import org.apache.kafka.common.TopicPartition
+import org.apache.kafka.common.{Metric, MetricName, TopicPartition}
 import org.apache.kafka.common.serialization.ByteArrayDeserializer
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -74,6 +74,13 @@ object CommandsSource extends LazyLogging {
             logger.error(s"deserialize command error for msg [$msg] and value: [$s]",err)
           }
           val command = commandTry.get
+
+          command match {
+            case SingleCommand(_, _, _, _, lastModifiedBy) =>
+              if (lastModifiedBy == "") logger.error("SingleCommand was written without lastModifiedBy field! command: ",command)
+            case _ =>
+          }
+
           logger.debug(s"consumed command: $command")
           BGMessage[Command](CompleteOffset(msg.topic(), msg.offset()), command)
         }.via(sharedKillSwitch.flow)
@@ -81,14 +88,14 @@ object CommandsSource extends LazyLogging {
     val priorityPersistCommandsSource =
       Consumer.plainSource[Array[Byte], Array[Byte]](persistCommandsConsumerSettings,prioritySubscription)
         .map { msg =>
-          logger.info(s"consuming next payload from priority persist commands topic @ ${msg.offset()}")
+          logger.debug(s"consuming next payload from priority persist commands topic @ ${msg.offset()}")
           val commandTry = Try(CommandSerializer.decode(msg.value()))
           commandTry.failed.foreach { err =>
             val s = new String(msg.value(), StandardCharsets.UTF_8)
             logger.error(s"deserialize command error for msg [$msg] and value: [$s]", err)
           }
           val command = commandTry.get
-          logger.info(s"consumed priority command: $command")
+          logger.debug(s"consumed priority command: $command")
           BGMessage[Command](CompleteOffset(msg.topic(), msg.offset()), command)
         }.via(sharedKillSwitch.flow)
 
@@ -135,5 +142,7 @@ object CommandsSource extends LazyLogging {
         _ <- r
       } yield Done
     }
+
+    override def metrics: Future[Map[MetricName, Metric]] = ???
   }
 }

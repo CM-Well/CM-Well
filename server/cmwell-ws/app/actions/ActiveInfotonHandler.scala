@@ -16,6 +16,7 @@ package actions
 
 import cmwell.domain._
 import cmwell.ws.Settings
+import org.joda.time.{DateTime, DateTimeZone}
 import wsutil.StringExtensions
 
 /**
@@ -26,7 +27,7 @@ object ActiveInfotonHandler {
 //  private[this] val activeInfotons = Set[String]("/proc","/proc/node")
 
   def wrapInfotonReply(infoton: Option[Infoton]): Option[Infoton] = infoton match {
-    case Some(i) if requiresWrapping(i.path) => Some(wrap(i))
+    case Some(i) if requiresWrapping(i.systemFields.path) => Some(wrap(i))
     case i                                   => i
   }
 
@@ -42,15 +43,15 @@ object ActiveInfotonHandler {
 
   // todo why do we have to invoke v2i explicitly if it's an implicit def ?!
   private[this] def wrap(infoton: Infoton): Infoton = infoton match {
-    case cp @ CompoundInfoton("/", _, _, _, _, children, _, length, total, _, _) =>
-      cp.copy(children = v2i(VirtualInfoton(ObjectInfoton("/proc", Settings.dataCenter, protocol = None))) +: children,
-              total = total + 1,
-              length = length + 1)
-    case cp @ CompoundInfoton("/meta/ns", _, _, _, _, children, _, length, total, _, _) =>
+    case cp @ CompoundInfoton(SystemFields("/", _, _, _, _, _, _), _, children, _, length, total) =>
+      cp.copy(children = v2i(VirtualInfoton(ObjectInfoton(SystemFields("/proc", new DateTime(DateTimeZone.UTC), "VirtualInfoton", Settings.dataCenter, None,
+        "", "http")))) +: children, total = total + 1, length = length + 1)
+    case cp @ CompoundInfoton(SystemFields("/meta/ns", _, _, _, _, _, _), _, children, _, length, total) =>
       cp.copy(
-        children = v2i(VirtualInfoton(ObjectInfoton("/meta/ns/sys", Settings.dataCenter, protocol = None))) +: v2i(
-          VirtualInfoton(ObjectInfoton("/meta/ns/nn", Settings.dataCenter, protocol = None))
-        ) +: children,
+        children = v2i(VirtualInfoton(ObjectInfoton(SystemFields("/meta/ns/sys", new DateTime(DateTimeZone.UTC), "VirtualInfoton", Settings.dataCenter, None,
+          "", "http")))) +: v2i(
+          VirtualInfoton(ObjectInfoton(SystemFields("/meta/ns/nn", new DateTime(DateTimeZone.UTC), "VirtualInfoton", Settings.dataCenter, None,
+            "", "http")))) +: children,
         total = total + 2,
         length = length + 2
       )

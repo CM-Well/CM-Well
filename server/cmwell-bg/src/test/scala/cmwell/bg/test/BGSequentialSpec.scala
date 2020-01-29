@@ -14,9 +14,12 @@
   */
 package cmwell.bg.test
 
-import java.util.Properties
+import domain.testUtil.InfotonGenerator.genericSystemFields
+import java.util.concurrent.Executors
 
 import akka.actor.{ActorRef, ActorSystem}
+import akka.pattern.ask
+import akka.util.Timeout
 import cmwell.bg.{CMWellBGActor, ShutDown}
 import cmwell.common.{CommandSerializer, OffsetsService, WriteCommand, ZStoreOffsetsService}
 import cmwell.domain.{FieldValue, ObjectInfoton}
@@ -25,19 +28,15 @@ import cmwell.fts._
 import cmwell.irw.IRWService
 import cmwell.util.concurrent.SimpleScheduler.scheduleFuture
 import cmwell.zstore.ZStore
-import com.typesafe.config.{Config, ConfigFactory}
+import com.typesafe.config.{Config, ConfigValueFactory}
 import com.typesafe.scalalogging.LazyLogging
 import org.apache.kafka.clients.producer.{KafkaProducer, ProducerRecord}
-import org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest
-import org.elasticsearch.common.unit.TimeValue
-import org.scalatest.{BeforeAndAfterAll, DoNotDiscover, FlatSpec, Matchers}
+import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
 
-import concurrent.duration._
-import scala.concurrent.{Await, Future}
-import scala.io.Source
+import scala.concurrent.duration._
+import scala.concurrent.{Await, ExecutionContext, Future}
 
-@DoNotDiscover
-class BGSequentialSpec extends FlatSpec with BeforeAndAfterAll with Matchers with LazyLogging {
+class BGSequentialSpec extends FlatSpec with BeforeAndAfterAll with BgEsCasKafkaZookeeperDockerSuite with Matchers with LazyLogging {
 
   var kafkaProducer:KafkaProducer[Array[Byte], Array[Byte]] = _
   var cmwellBGActor:ActorRef = _
@@ -45,63 +44,37 @@ class BGSequentialSpec extends FlatSpec with BeforeAndAfterAll with Matchers wit
   var irwService:IRWService = _
   var zStore:ZStore = _
   var offsetsService:OffsetsService = _
-  var ftsServiceES:FTSServiceNew = _
+  var ftsServiceES:FTSService = _
   var bgConfig:Config = _
   var actorSystem:ActorSystem = _
 
+
   override def beforeAll = {
-    val producerProperties = new Properties
-    producerProperties.put("bootstrap.servers", "localhost:9092")
-    producerProperties.put("key.serializer", "org.apache.kafka.common.serialization.ByteArraySerializer")
-    producerProperties.put("value.serializer", "org.apache.kafka.common.serialization.ByteArraySerializer")
-    kafkaProducer = new KafkaProducer[Array[Byte], Array[Byte]](producerProperties)
-
-    dao = Dao("Test","data2")
+    //notify ES to not set Netty's available processors
+    System.setProperty("es.set.netty.runtime.available.processors", "false")
+    kafkaProducer = BgTestHelpers.kafkaProducer(s"${kafkaContainer.containerIpAddress}:${kafkaContainer.mappedPort(9092)}")
+    dao = BgTestHelpers.dao(cassandraContainer.containerIpAddress, cassandraContainer.mappedPort(9042))
     irwService = IRWService.newIRW(dao, 25 , true, 120.seconds)
-    // truncate all tables
-    Await.ready(irwService.purgeAll(), 20.seconds)
-
+    // truncate all tables - not needed anymore since the docker images are started fresh each time
+    //Await.ready(irwService.purgeAll(), 20.seconds)
     zStore = ZStore(dao)
     offsetsService = new ZStoreOffsetsService(zStore)
-    ftsServiceES = FTSServiceNew("es.test.yml")
-
-    // wait for green status
-    ftsServiceES.client.admin().cluster()
-      .prepareHealth()
-      .setWaitForGreenStatus()
-      .setTimeout(TimeValue.timeValueMinutes(5))
-      .execute()
-      .actionGet()
-
-    // delete all existing indices
-    ftsServiceES.client.admin().indices().delete(new DeleteIndexRequest("_all"))
-
-    // load indices template
-    val indicesTemplate = Source.fromURL(this.getClass.getResource("/indices_template_new.json")).getLines.reduceLeft(_ + _)
-    ftsServiceES.client.admin().indices().preparePutTemplate("indices_template").setSource(indicesTemplate).execute().actionGet()
-
-    bgConfig = ConfigFactory.load
-
+    val ftsOverridesConfig = BgTestHelpers.ftsOverridesConfig(elasticsearchContainer.containerIpAddress, elasticsearchContainer.mappedPort(9300))
+    ftsServiceES = FTSService(ftsOverridesConfig)
+    BgTestHelpers.initFTSService(ftsServiceES)
+    bgConfig = ftsOverridesConfig
+      .withValue("cmwell.bg.kafka.bootstrap.servers", ConfigValueFactory.fromAnyRef(s"${kafkaContainer.containerIpAddress}:${kafkaContainer.mappedPort(9092)}"))
     actorSystem = ActorSystem("cmwell-bg-test-system")
-
     cmwellBGActor = actorSystem.actorOf(CMWellBGActor.props(0, bgConfig, irwService, ftsServiceES, zStore, offsetsService))
-
-    // scalastyle:off
-    println("waiting 10 seconds for all components to load")
-    Thread.sleep(10000)
-    // scalastyle:on
-
   }
 
-
   "BG" should "process priority commands" in {
+    implicit val ex = ExecutionContext.fromExecutor(Executors.newWorkStealingPool(10))
+
     // prepare sequence of priority writeCommands
     val pWriteCommands = Seq.tabulate(2000) { n =>
-      val infoton = ObjectInfoton(
-        path = s"/cmt/cm/bg-test-priority-before-batch/prio/info$n",
-        dc = "dc",
-        indexTime = None,
-        fields = Some(Map("country" -> Set(FieldValue("Egypt"), FieldValue("Israel")))),protocol=None)
+      val infoton = ObjectInfoton(genericSystemFields.copy(path = s"/cmt/cm/bg-test-priority-before-batch/prio/info$n", lastModifiedBy = "Baruch"),
+        fields = Some(Map("country" -> Set(FieldValue("Egypt"), FieldValue("Israel")))))
       WriteCommand(infoton)
     }
 
@@ -113,11 +86,8 @@ class BGSequentialSpec extends FlatSpec with BeforeAndAfterAll with Matchers wit
 
     // prepare sequence of priority writeCommands
     val writeCommands = Seq.tabulate(15000) { n =>
-      val infoton = ObjectInfoton(
-        path = s"/cmt/cm/bg-test-priority-before-batch/batch/info$n",
-        dc = "dc",
-        indexTime = None,
-        fields = Some(Map("country" -> Set(FieldValue("Egypt"), FieldValue("Israel")))),protocol=None)
+      val infoton = ObjectInfoton(genericSystemFields.copy(path = s"/cmt/cm/bg-test-priority-before-batch/batch/info$n", lastModifiedBy = "Baruch"),
+        fields = Some(Map("country" -> Set(FieldValue("Egypt"), FieldValue("Israel")))))
       WriteCommand(infoton)
     }
 
@@ -127,45 +97,48 @@ class BGSequentialSpec extends FlatSpec with BeforeAndAfterAll with Matchers wit
       new ProducerRecord[Array[Byte], Array[Byte]]("persist_topic", commandBytes)
     }
 
-    val f1 = Future{
-      records.foreach{ r =>
+    val f1 = Future {
+      records.foreach { r =>
         kafkaProducer.send(r)
       }
-    }(scala.concurrent.ExecutionContext.Implicits.global)
-    val f2 = scheduleFuture(1000.millisecond){
-      Future{
-        pRecords.foreach{ r =>
+    }
+    val f2 = scheduleFuture(1000.millisecond) {
+      Future {
+        pRecords.foreach { r =>
           kafkaProducer.send(r)
         }
-      }(scala.concurrent.ExecutionContext.Implicits.global)
+      }
     }
 
-    val assertFut = scheduleFuture(25.seconds) {
-      f2.flatMap { _ =>
-        logger error s"Finished sending"
-        val res = ftsServiceES.search(
+    val assertFut = f2.flatMap { _ =>
+      cmwell.util.concurrent.spinCheck(250.millis, true, 60.seconds) {
+        ftsServiceES.search(
           pathFilter = Some(PathFilter("/cmt/cm/bg-test-priority-before-batch/prio", true)),
-          fieldsFilter = None,
+          fieldsFilter = Some(FieldFilter(Must, Equals, "system.lastModifiedBy", "Baruch")),
           datesFilter = None,
           paginationParams = PaginationParams(0, 3000),
-          sortParams = SortParam.indexTimeDescending,
+          sortParams = SortParam("system.indexTime" -> Desc),
           withHistory = false,
           withDeleted = false
-        )(scala.concurrent.ExecutionContext.Implicits.global,logger)
-
-        withClue(res){
-          res.map{ _.infotons.size should equal(2000)}(scala.concurrent.ExecutionContext.Implicits.global)
+        )
+      }(_.infotons.size == 2000)
+        .map { res =>
+          withClue(res) {
+            res.infotons.size should equal(2000)
+          }
         }
-      }(scala.concurrent.ExecutionContext.Implicits.global)
     }
-
-    Await.result(assertFut, 30.seconds)
+    Await.result(assertFut, 50.seconds)
   }
-
     override def afterAll() = {
-      cmwellBGActor ! ShutDown
-      Thread.sleep(2000)
+      val timeout = 30.seconds
+      val future = (cmwellBGActor ? ShutDown)(Timeout(timeout))
+      val result = Await.result(future, timeout)
       ftsServiceES.shutdown()
-      irwService = null
+      dao.shutdown()
+      kafkaProducer.close()
     }
 }
+
+
+

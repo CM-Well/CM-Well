@@ -13,7 +13,7 @@
   * limitations under the License.
   */
 
-
+import domain.testUtil.InfotonGenerator.genericSystemFields
 import cmwell.domain._
 import cmwell.rts.Rule
 import org.scalatest.{Matchers, FlatSpec}
@@ -27,15 +27,15 @@ class RuleSpec extends FlatSpec with Matchers {
     val r1 = Rule("/mark/test",false)
     val r2 = Rule("/mark/test",true)
 
-    false should equal (r1.path check ObjectInfoton("/mark","dc_test",protocol=None).path)
-    true should equal  (r1.path check ObjectInfoton("/mark/test","dc_test",protocol=None).path)
-    true should equal  (r1.path check ObjectInfoton("/mark/test/1","dc_test",protocol=None).path)
-    false should equal (r1.path check ObjectInfoton("/mark/test/1/2/","dc_test",protocol=None).path)
+    false should equal (r1.path check ObjectInfoton(genericSystemFields.copy(path ="/mark")).systemFields.path)
+    true should equal  (r1.path check ObjectInfoton(genericSystemFields.copy(path ="/mark/test")).systemFields.path)
+    true should equal  (r1.path check ObjectInfoton(genericSystemFields.copy(path ="/mark/test/1")).systemFields.path)
+    false should equal (r1.path check ObjectInfoton(genericSystemFields.copy(path ="/mark/test/1/2/")).systemFields.path)
 
-    false should equal(r2.path check ObjectInfoton("/mark","dc_test",protocol=None).path)
-    true should equal (r2.path check  ObjectInfoton("/mark/test","dc_test",protocol=None).path)
-    true should equal (r2.path check  ObjectInfoton("/mark/test/1","dc_test",protocol=None).path)
-    true should equal(r2.path check ObjectInfoton("/mark/test/1/2/","dc_test",protocol=None).path)
+    false should equal(r2.path check ObjectInfoton(genericSystemFields.copy(path ="/mark")).systemFields.path)
+    true should equal (r2.path check  ObjectInfoton(genericSystemFields.copy(path ="/mark/test")).systemFields.path)
+    true should equal (r2.path check  ObjectInfoton(genericSystemFields.copy(path ="/mark/test/1")).systemFields.path)
+    true should equal(r2.path check ObjectInfoton(genericSystemFields.copy(path ="/mark/test/1/2/")).systemFields.path)
   }
 
 

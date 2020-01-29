@@ -204,7 +204,7 @@ package object string extends LazyLogging {
         .map { f ⇒ (s: String) ⇒
           Try(f(s)).toOption
         }
-    (Option.empty[DateTime] /: funcs) {
+    funcs.foldLeft(Option.empty[DateTime]) {
       case (None, f) => f(dateStr)
       case (opt, _)  => opt
     }

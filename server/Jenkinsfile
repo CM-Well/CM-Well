@@ -9,13 +9,23 @@ pipeline {
     sbt = "${tool name: 'sbt-1.2', type: 'org.jvnet.hudson.plugins.SbtPluginBuilder$SbtInstallation'}/bin/sbt"
     SCALA_LOCATION = "$HOME/tools/scala-2.12.6/bin/"
   }
+  options{
+    ansiColor('xterm')
+    buildDiscarder(logRotator(numToKeepStr: '10'))
+    timestamps()
+    timeout(30)
+  }
   stages {
     stage('Build') {
       steps {
         ansiColor(colorMapName: 'xterm') {
           dir(path: 'server') {
             sh 'rm -rf project/target'
-            configFileProvider([configFile(fileId: 'sbt_repos', targetLocation: "$HOME/.sbt", variable: 'repositories')]) {
+            configFileProvider([
+                configFile(fileId: 'sbt_repos', targetLocation: "$HOME/.sbt", variable: 'repositories'),
+                configFile(fileId: 'bams_sbt_credentials', variable: 'credentials'),
+                configFile(fileId: 'sbtopts', targetLocation: "$WORKSPACE/server")
+                ]) {
                 sh '${sbt} -mem 2048 "reload plugins" update "reload return" clean reload compile'
             }
           }

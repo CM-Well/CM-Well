@@ -13,10 +13,9 @@ libraryDependencies ++= {
     dm("org.apache.commons", "commons-lang3"),
     dm("com.typesafe.scala-logging", "scala-logging"),
     dm("com.typesafe.play", "play-json"),
+    dm("org.scala-lang.modules", "scala-collection-compat"),
     dm("com.typesafe.akka", "akka-testkit") % "test",
     dm("com.typesafe.akka", "akka-stream-testkit") % "test",
     dm("com.github.tomakehurst", "wiremock") % "test" jar()
   )
 }
-
-fullTest := (test in Test).value

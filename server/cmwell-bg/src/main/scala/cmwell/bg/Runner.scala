@@ -16,7 +16,7 @@ package cmwell.bg
 
 import cmwell.common.ZStoreOffsetsService
 import cmwell.driver.Dao
-import cmwell.fts.FTSServiceNew
+import cmwell.fts.FTSService
 import cmwell.irw.IRWService
 import cmwell.zstore.ZStore
 import com.typesafe.config.{ConfigFactory, ConfigValueFactory}
@@ -55,25 +55,26 @@ object Runner extends LazyLogging {
         val irwServiceDaoClusterName = config.getString("irwServiceDao.clusterName")
         val irwServiceDaoKeySpace = config.getString("irwServiceDao.keySpace")
         val irwServiceDaoHostName = config.getString("irwServiceDao.hostName")
-        Dao(irwServiceDaoClusterName, irwServiceDaoKeySpace, irwServiceDaoHostName)
+        Dao(irwServiceDaoClusterName, irwServiceDaoKeySpace, irwServiceDaoHostName, 9042, initCommands = None)
       }
 
       // casTimeout = Duration.Inf means not to use timeoutFuture in IRW.
       val irwService = IRWService.newIRW(casDao, disableReadCache = false, casTimeout = Duration.Inf)
       val zStore = ZStore(casDao)
-      val ftsService = FTSServiceNew("bg.es.yml")
+      val ftsService = FTSService(config)
       val offsetsService = new ZStoreOffsetsService(zStore)
 
       val serviceTypes = {
         val neighborhoodPartitions = (partition to partition+2) map (_ % numOfPartitions)
 
         val basicServiceTypes = ServiceTypes()
+/*NOTE: ZkUtils was removed from newer versions of Kafka. Also, this class never actually worked so it's not a regression to remove it.
           .add("KafkaMonitor",
             classOf[KafkaMonitorActor],
             zkServers,
             15 * 60 * 1000L,
             concurrent.ExecutionContext.Implicits.global)
-
+*/
         neighborhoodPartitions.foldLeft(basicServiceTypes) { (st,par) =>
           st.add(s"BGActor$par", classOf[CMWellBGActor], par,
             config.withValue("cmwell.bg.persist.commands.partition", ConfigValueFactory.fromAnyRef(par))

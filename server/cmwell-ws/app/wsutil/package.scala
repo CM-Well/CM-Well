@@ -34,7 +34,7 @@ import filters.Attrs
 import ld.cmw.PassiveFieldTypesCache
 import ld.exceptions.{BadFieldTypeException, ConflictingNsEntriesException, ServerComponentNotAvailableException, TooManyNsRequestsException}
 import logic.CRUDServiceFS
-import org.joda.time.DateTime
+import org.joda.time.{DateTime, DateTimeZone}
 import org.joda.time.format.ISODateTimeFormat
 import play.api.http.{HttpChunk, HttpEntity}
 import play.api.libs.json.Json
@@ -42,7 +42,6 @@ import play.api.mvc.Results._
 import play.api.mvc.{Headers, Request, ResponseHeader, Result}
 import play.utils.InvalidUriEncodingException
 
-import scala.collection.breakOut
 import scala.concurrent.duration.{DurationInt, FiniteDuration}
 import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.util.{Failure, Success, Try}
@@ -50,7 +49,7 @@ import scala.util.{Failure, Success, Try}
 package object wsutil extends LazyLogging {
 
   val Uuid = "([a-f0-9]{32})".r
-  val zeroTime = new DateTime(0L)
+  val zeroTime = new DateTime(0L, DateTimeZone.UTC)
   lazy val dtf = ISODateTimeFormat.dateTime()
 
   /**
@@ -282,8 +281,8 @@ package object wsutil extends LazyLogging {
                                            field: RawField[FieldValeOperator],
                                            interval: Int,
                                            minDocCount: Int,
-                                           extMin: Option[Long],
-                                           extMax: Option[Long],
+                                           extMin: Option[Double],
+                                           extMax: Option[Double],
                                            subFilters: Seq[RawAggregationFilter] = Seq.empty)
       extends RawAggregationFilter
 
@@ -301,7 +300,6 @@ package object wsutil extends LazyLogging {
       extends RawAggregationFilter
 
   object RawAggregationFilter {
-    private[this] val lbo = scala.collection.breakOut[Set[String], AggregationFilter, List[AggregationFilter]]
     private def uniq(fn: String, name: String) = {
       if (fn.length > 1 && fn.tail.head == '$') s"-${fn.head}- $name"
       else "-s- " + name
@@ -312,44 +310,44 @@ package object wsutil extends LazyLogging {
              timeContext: Option[Long])(implicit ec: ExecutionContext): Future[List[AggregationFilter]] = af match {
       case RawStatsAggregationFilter(name, (op, fk)) =>
         FieldKey.eval(fk, cache, cmwellRDFHelper, timeContext).map { fns =>
-          fns.map { fn =>
+          fns.view.map { fn =>
             val uname = {
               if (fns.size == 1) name
               else uniq(fn, name)
             }
             StatsAggregationFilter(uname, Field(op, fn))
-          }(lbo)
+          }.to(List)
         }
       case RawTermAggregationFilter(name, (op, fk), size, rawSubFilters) if rawSubFilters.nonEmpty => {
         val ff = FieldKey.eval(fk, cache, cmwellRDFHelper, timeContext)
         Future.traverse(rawSubFilters)(eval(_, cache, cmwellRDFHelper, timeContext)).flatMap { subFilters =>
           ff.map { fns =>
-            fns.map { fn =>
+            fns.view.map { fn =>
               val uname = {
                 if (fns.size == 1) name
                 else uniq(fn, name)
               }
               TermAggregationFilter(uname, Field(op, fn), size, subFilters.flatten)
-            }(lbo)
+            }.to(List)
           }
         }
       }
       case RawTermAggregationFilter(name, (op, fk), size, rawSubFilters) if rawSubFilters.isEmpty =>
         FieldKey.eval(fk, cache, cmwellRDFHelper, timeContext).map { fns =>
-          fns.map { fn =>
+          fns.view.map { fn =>
             val uname = {
               if (fns.size == 1) name
               else uniq(fn, name)
             }
             TermAggregationFilter(uname, Field(op, fn), size)
-          }(lbo)
+          }.to(List)
         }
       case RawHistogramAggregationFilter(name, (op, fk), interval, minDocCount, extMin, extMax, rawSubFilters)
           if rawSubFilters.nonEmpty => {
         val ff = FieldKey.eval(fk, cache, cmwellRDFHelper, timeContext)
         Future.traverse(rawSubFilters)(eval(_, cache, cmwellRDFHelper, timeContext)).flatMap { subFilters =>
           ff.map { fns =>
-            fns.map { fn =>
+            fns.view.map { fn =>
               val uname = {
                 if (fns.size == 1) name
                 else uniq(fn, name)
@@ -361,58 +359,58 @@ package object wsutil extends LazyLogging {
                                          extMin,
                                          extMax,
                                          subFilters.flatten)
-            }(lbo)
+            }.to(List)
           }
         }
       }
       case RawHistogramAggregationFilter(name, (op, fk), interval, minDocCount, extMin, extMax, rawSubFilters)
           if rawSubFilters.isEmpty =>
         FieldKey.eval(fk, cache, cmwellRDFHelper, timeContext).map { fns =>
-          fns.map { fn =>
+          fns.view.map { fn =>
             val uname = {
               if (fns.size == 1) name
               else uniq(fn, name)
             }
             HistogramAggregationFilter(uname, Field(op, fn), interval, minDocCount, extMin, extMax)
-          }(lbo)
+          }.to(List)
         }
       case RawSignificantTermsAggregationFilter(name, (op, fk), None, minDocCount, size, rawSubFilters)
           if rawSubFilters.nonEmpty => {
         val ff = FieldKey.eval(fk, cache, cmwellRDFHelper, timeContext)
         Future.traverse(rawSubFilters)(eval(_, cache, cmwellRDFHelper, timeContext)).flatMap { subFilters =>
           ff.map { fns =>
-            fns.map { fn =>
+            fns.view.map { fn =>
               val uname = {
                 if (fns.size == 1) name
                 else uniq(fn, name)
               }
               SignificantTermsAggregationFilter(uname, Field(op, fn), None, minDocCount, size, subFilters.flatten)
-            }(lbo)
+            }.to(List)
           }
         }
       }
       case RawSignificantTermsAggregationFilter(name, (op, fk), None, minDocCount, size, rawSubFilters)
           if rawSubFilters.isEmpty =>
         FieldKey.eval(fk, cache, cmwellRDFHelper, timeContext).map { fns =>
-          fns.map { fn =>
+          fns.view.map { fn =>
             val uname = {
               if (fns.size == 1) name
               else uniq(fn, name)
             }
             SignificantTermsAggregationFilter(uname, Field(op, fn), None, minDocCount, size)
-          }(lbo)
+          }.to(List)
         }
       //TODO: backgroundTerms should also be unevaluated FieldKey. need to fix the parser.
       case RawSignificantTermsAggregationFilter(_, _, Some(_), _, _, _) => ???
       case RawCardinalityAggregationFilter(name, (op, fk), precisionThreshold) =>
         FieldKey.eval(fk, cache, cmwellRDFHelper, timeContext).map { fns =>
-          fns.map { fn =>
+          fns.view.map { fn =>
             val uname = {
               if (fns.size == 1) name
               else uniq(fn, name)
             }
             CardinalityAggregationFilter(uname, Field(op, fn), precisionThreshold)
-          }(lbo)
+          }.to(List)
         }
     }
   }
@@ -451,7 +449,7 @@ package object wsutil extends LazyLogging {
 
   //Some convenience methods & types
   def getByPath(protocol: String, path: String, crudServiceFS: CRUDServiceFS)(implicit ec: ExecutionContext): Future[Infoton] =
-    crudServiceFS.irwService.readPathAsync(path, crudServiceFS.level).map(_.getOrElse(GhostInfoton.ghost(protocol, path)))
+    crudServiceFS.irwService.readPathAsync(path, crudServiceFS.level).map(_.getOrElse(GhostInfoton.ghost(path, protocol)))
   type F[X] = (X, Option[List[RawFieldFilter]])
   type EFX = Either[F[Future[Infoton]], F[Infoton]]
 
@@ -561,18 +559,16 @@ package object wsutil extends LazyLogging {
       } else Map.empty[String, Set[FieldValue]]
 
       // build a list that pairs cmwell paths to retrieval with raw field filters to be applied on
-      val cmwPathFilterOptionPairs = fieldsReduced.flatMap {
+      val cmwPathFilterOptionPairs = fieldsReduced.view.flatMap {
         case (fieldName, values) =>
           funs.flatMap {
             case (func, _) if !func(fieldName) => Nil
             case (_, rffo) =>
-              values.collect {
+              values.view.collect {
                 case fr: FReference => (fr.getProtocol -> normalizePath(fr.getCmwellPath)) -> rffo
-              }(breakOut[Set[FieldValue], ((String,String), Option[RawFieldFilter]), List[((String,String), Option[RawFieldFilter])]])
+              }.to(List)
           }
-      }(
-        breakOut[Map[String, Set[FieldValue]], ((String,String), Option[RawFieldFilter]), List[((String,String), Option[RawFieldFilter])]]
-      )
+      }.to(List)
 
       // value are `Option[List[...]]` because `None` means no filtering (pass all)
       // which is different from emptylist which means at least 1 filter should apply (i.e: block all)
@@ -675,9 +671,9 @@ package object wsutil extends LazyLogging {
 
     Future
       .traverse(population.grouped(chunkSize)) { infotonsChunk =>
-        val pathsAndProtocols: List[(String,String)] = infotonsChunk.map { i =>
-          i.path -> i.protocol.getOrElse(cmwell.common.Settings.defaultProtocol)
-        }(breakOut)
+        val pathsAndProtocols: List[(String,String)] = infotonsChunk.view.map { i =>
+          i.systemFields.path -> i.systemFields.protocol
+        }.to(List)
 
         val fieldFilterFut = filteredFields match {
           case Nil =>
@@ -737,16 +733,14 @@ package object wsutil extends LazyLogging {
               expandDeeper(
                 fs,
                 lInfotons ++ rInfotons,
-                infotonsRetrievedCache ++ lInfotons.map(i => i.path -> i)(
-                  scala.collection.breakOut[Seq[Infoton], (String, Infoton), Map[String, Infoton]]
-                )
+                infotonsRetrievedCache ++ lInfotons.view.map(i => i.systemFields.path -> i).toMap
               )
           }
       }
     }
 
     val t = ExpandGraphParser.getLevelsExpansionFunctions(xgPattern).map { fs =>
-      expandDeeper(fs, infotons, infotons.map(i => i.path -> i).toMap)
+      expandDeeper(fs, infotons, infotons.map(i => i.systemFields.path -> i).toMap)
     }
 
     t match {
@@ -762,22 +756,20 @@ package object wsutil extends LazyLogging {
                 chunkSize: Int,
                 timeContext: Option[Long])(implicit ec: ExecutionContext): Future[Seq[Infoton]] = {
 
-    logger.trace(s"gqpFilter with infotons: [${infotons.map(_.path).mkString(", ")}]")
+    logger.trace(s"gqpFilter with infotons: [${infotons.map(_.systemFields.path).mkString(", ")}]")
 
     def filterByDirectedExpansion(
       dexp: DirectedExpansion
     )(iv: (Infoton, Vector[Infoton])): Future[(Infoton, Vector[Infoton])] = {
-      logger.trace(sanitizeLogLine(
-        s"filterByDirectedExpansion($dexp): with original[${iv._1.path}] and current-pop[${iv._2.map(_.path).mkString(", ")}]"
-      ))
+      logger.trace(
+        s"filterByDirectedExpansion($dexp): with original[${iv._1.systemFields.path}] and current-pop[${iv._2.map(_.systemFields.path).mkString(", ")}]"
+      )
       dexp match {
         case ExpandIn(filteredFields) =>
           expandIn(
             filteredFields,
             iv._2,
-            iv._2.map(i => i.path -> i)(
-              scala.collection.breakOut[Vector[Infoton], (String, Infoton), Map[String, Infoton]]
-            ),
+            iv._2.view.map(i => i.systemFields.path -> i).toMap,
             cmwellRDFHelper,
             typesCache,
             timeContext
@@ -785,9 +777,9 @@ package object wsutil extends LazyLogging {
             case (l, r) =>
               iv._1 -> {
                 val rv = l.toVector ++ r
-                logger.trace(sanitizeLogLine(
-                  s"filterByDirectedExpansion($dexp): after expandIn($filteredFields), finished with result[${rv.map(_.path).mkString(", ")}]"
-                ))
+                logger.trace(
+                  s"filterByDirectedExpansion($dexp): after expandIn($filteredFields), finished with result[${rv.map(_.systemFields.path).mkString(", ")}]"
+                )
                 rv
               }
           }
@@ -796,9 +788,7 @@ package object wsutil extends LazyLogging {
             filteredFields,
             iv._2,
             cmwellRDFHelper,
-            iv._2.map(i => i.path -> i)(
-              scala.collection.breakOut[Vector[Infoton], (String, Infoton), Map[String, Infoton]]
-            ),
+            iv._2.view.map(i => i.systemFields.path -> i).toMap,
             typesCache,
             infotons.take(3),
             gqpPattern,
@@ -808,9 +798,9 @@ package object wsutil extends LazyLogging {
             case (l, r) =>
               iv._1 -> {
                 val rv = l.toVector ++ r
-                logger.trace(sanitizeLogLine(
-                  s"filterByDirectedExpansion($dexp): after expandIn($filteredFields), finished with result[${rv.map(_.path).mkString(", ")}]"
-                ))
+                logger.trace(
+                  s"filterByDirectedExpansion($dexp): after expandIn($filteredFields), finished with result[${rv.map(_.systemFields.path).mkString(", ")}]"
+                )
                 rv
               }
           }
@@ -829,7 +819,7 @@ package object wsutil extends LazyLogging {
         }
         .andThen {
           case Success(is) =>
-            logger.trace(s"nextFilteringHop: finished with survivors[${is.map(_.path).mkString(", ")}]")
+            logger.trace(s"nextFilteringHop: finished with survivors[${is.map(_.systemFields.path).mkString(", ")}]")
           case Failure(ex) => logger.error(s"nextFilteringHop($dexp,$dexps,$survivors)", ex)
         }
     }
@@ -842,13 +832,13 @@ package object wsutil extends LazyLogging {
             case (vecFut, PathExpansion(segments)) if segments.isEmpty => vecFut
             case (vecFut, PathExpansion(segments)) =>
               vecFut.flatMap { vec =>
-                val candidates: Vector[(Infoton, Vector[Infoton])] = infotons.collect {
+                val candidates: Vector[(Infoton, Vector[Infoton])] = infotons.view.collect {
                   case i if !vec.contains(i) =>
                     i -> Vector(i)
-                }(breakOut[Seq[Infoton], (Infoton, Vector[Infoton]), Vector[(Infoton, Vector[Infoton])]])
+                }.to(Vector)
                 logger.trace(s"appending: [${segments.mkString(", ")}] to vec[${vec
-                  .map(_.path)
-                  .mkString(", ")}] with candidates[${candidates.map(_._1.path).mkString(", ")}]")
+                  .map(_.systemFields.path)
+                  .mkString(", ")}] with candidates[${candidates.map(_._1.systemFields.path).mkString(", ")}]")
                 nextFilteringHop(segments.head, segments.tail, candidates).map(_ ++: vec)
               }
           }
@@ -907,7 +897,7 @@ package object wsutil extends LazyLogging {
           .flatMap { expanderRetrievedInfotonPairs =>
             val (newExpanders, retrievedInfotons) = expanderRetrievedInfotonPairs.unzip
             val newCache = retrievedInfotons.foldLeft(cache) {
-              case (accache, additions) => accache ++ additions.map(i => i.path -> i)
+              case (accache, additions) => accache ++ additions.map(i => i.systemFields.path -> i)
             }
             expandDeeper(newExpanders, newCache)
           }
@@ -921,10 +911,7 @@ package object wsutil extends LazyLogging {
               (head, segments.tail, infotons)
             }
         }
-        expandDeeper(perPathHeadTail,
-                     infotons.map(i => i.path -> i)(
-                       scala.collection.breakOut[Seq[Infoton], (String, Infoton), Map[String, Infoton]]
-                     ))
+        expandDeeper(perPathHeadTail, infotons.view.map(i => i.systemFields.path -> i).toMap)
       }
     } match {
       case Success(future) => future
@@ -953,6 +940,8 @@ package object wsutil extends LazyLogging {
       case _: security.UnauthorizedException                            => Forbidden -> { _.getMessage }
       case _: org.apache.jena.shared.JenaException                      => BadRequest -> { _.getMessage }
       case _: cmwell.web.ld.exceptions.ParsingException                 => BadRequest -> { _.getMessage }
+      case _: NumberFormatException                                     =>
+        BadRequest -> { e => s"Bad number format: ${e.getMessage}" }
       case _: IllegalArgumentException                                  => BadRequest -> { _.getMessage }
       case _: UnsupportedURIException                                   => BadRequest -> { _.getMessage }
       case _: InvalidUriEncodingException                               => BadRequest -> { _.getMessage }
@@ -1140,7 +1129,7 @@ package object wsutil extends LazyLogging {
   def pathStatusAsInfoton(ps: PathStatus): Infoton = {
     val PathStatus(path, status) = ps
     val fields: Option[Map[String, Set[FieldValue]]] = Some(Map("trackingStatus" -> Set(FString(status.toString))))
-    VirtualInfoton(ObjectInfoton(path, Settings.dataCenter, None, fields = fields, protocol = None))
+    VirtualInfoton(ObjectInfoton(SystemFields(path, zeroTime, "VirtualInfoton", Settings.dataCenter, None, "", "http"), fields = fields))
   }
 
   def getFormatter(request: Request[_],

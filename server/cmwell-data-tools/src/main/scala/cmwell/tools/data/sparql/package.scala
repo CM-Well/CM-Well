@@ -26,4 +26,18 @@ package object sparql {
 
   type TokenAndStatisticsMap = Map[String, TokenAndStatistics]
   type TokenAndStatistics = (Token, Option[DownloadStats])
+
+  case class SensorContext(name: String, token: String, horizon: Boolean, remainingInfotons: Option[Long])
+
+  case class Sensor(name: String,
+                    qp: String = "",
+                    fromIndexTime: Long = 0,
+                    path: String,
+                    token: Option[String] = None,
+                    sparqlToRoot: Option[String] = None) {
+
+    override def toString: String = s"Sensor [name=$name, path=$path, qp=$qp, fromIndexTime=$fromIndexTime]"
+  }
+
+
 }

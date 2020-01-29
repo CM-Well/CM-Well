@@ -14,13 +14,13 @@
   */
 package filters
 
-import javax.inject._
-
 import akka.stream.Materializer
+import com.typesafe.scalalogging.LazyLogging
+import javax.inject._
 import play.api.http.MediaType
 import play.api.mvc.{Filter, RequestHeader, Result}
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.Future
 
 class AddFormatParameterIfOnlyAcceptHeaderProvidedFilter @Inject()(implicit val mat: Materializer) extends Filter {
   //MediaType2Format
@@ -62,7 +62,9 @@ class AddFormatParameterIfOnlyAcceptHeaderProvidedFilter @Inject()(implicit val 
           )) request
       else
         request.acceptedTypes.find(isCMWellAccepted(_)) match {
-          case Some(mt) => request.copy(queryString = request.queryString + ("format" -> Seq(formatToValidType(mt))))
+          case Some(mt) =>
+            val newTarget = request.target.withQueryString(request.target.queryMap + ("format" -> Seq(formatToValidType(mt))))
+            request.withTarget(newTarget)
           case None     => request
         }
     next(withFormat)

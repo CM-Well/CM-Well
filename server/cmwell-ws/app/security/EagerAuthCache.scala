@@ -88,7 +88,7 @@ class EagerAuthCache @Inject()(crudServiceFS: CRUDServiceFS)(implicit ec: Execut
 
   private def loadOnce(): Future[AuthData] = {
     // one level under /meta/auth is a parent (e.g. "users", "roles")
-    def isParent(infoton: Infoton) = infoton.path.count(_ == '/') < 4
+    def isParent(infoton: Infoton) = infoton.systemFields.path.count(_ == '/') < 4
     logger.debug(s"AuthCache is now loading...")
     crudServiceFS
       .search(Some(PathFilter("/meta/auth", descendants = true)),
@@ -97,10 +97,10 @@ class EagerAuthCache @Inject()(crudServiceFS: CRUDServiceFS)(implicit ec: Execut
       .map { searchResult =>
         val data = searchResult.infotons
           .filterNot(isParent)
-          .map(i => i.path -> extractPayload(i))
+          .map(i => i.systemFields.path -> extractPayload(i))
           .collect { case (p, Some(jsv)) => p -> jsv }
           .toMap
-        val (usersData, rolesData) = cmwell.util.collections.partitionWith(data) { t =>
+        val (usersData, rolesData) = cmwell.util.collections.partitionWith(data.iterator) { t =>
           val (path, payload) = t
           val isUser = path.startsWith("/meta/auth/users")
           val key = path.substring(path.lastIndexOf("/") + 1)
@@ -128,13 +128,13 @@ class EagerAuthCache @Inject()(crudServiceFS: CRUDServiceFS)(implicit ec: Execut
   }
 
   private def extractPayload(infoton: Infoton): Option[JsValue] = infoton match {
-    case FileInfoton(_, _, _, _, _, Some(FileContent(Some(payload), _, _, _)), _, _) =>
+    case FileInfoton(_, _,Some(FileContent(Some(payload), _, _, _))) =>
       val jsValOpt = Try(Json.parse(payload)).toOption
       if (jsValOpt.isEmpty)
-        logger.warn(sanitizeLogLine(s"AuthCache Infoton(${infoton.path}) has invalid JSON content."))
+        logger.warn(s"AuthCache Infoton(${infoton.systemFields.path}) has invalid JSON content.")
       jsValOpt
     case _ =>
-      logger.warn(sanitizeLogLine(s"AuthCache Infoton(${infoton.path}) does not exist, or is not a FileInfoton with valid content."))
+      logger.warn(s"AuthCache Infoton(${infoton.systemFields.path}) does not exist, or is not a FileInfoton with valid content.")
       None
   }
 

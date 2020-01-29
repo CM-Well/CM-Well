@@ -1,1 +1,1 @@
-CREATE TABLE IF NOT EXISTS data2.zstore (uzid text,field text,value blob,PRIMARY KEY (uzid, field)) WITH CLUSTERING ORDER BY (field ASC) AND compression = {'sstable_compression': 'LZ4Compressor'} AND caching = '{"keys":"ALL", "rows_per_partition":"ALL"}';
+CREATE TABLE IF NOT EXISTS data2.zstore (uzid text,field text,value blob,PRIMARY KEY (uzid, field)) WITH CLUSTERING ORDER BY (field ASC) AND compression = {'class': 'LZ4Compressor'} AND caching = {'keys':'ALL', 'rows_per_partition':'ALL'};

@@ -156,7 +156,7 @@ class TrackingActor(paths: Set[String], restored: Boolean, createTime: Long) ext
     case msg => log(msg.toString) // for debugging
   }
 
-  private def serializedSelf = data.map { case (p, s) => s"$p\0$s" }.mkString("\n").getBytes("UTF-8")
+  private def serializedSelf = data.map { case (p, s) => s"${p}\u0000$s" }.mkString("\n").getBytes("UTF-8")
 
   private def pub(sub: Option[ActorRef]) = if (isDone) sub.foreach(_ ! dataToExpose)
 }
