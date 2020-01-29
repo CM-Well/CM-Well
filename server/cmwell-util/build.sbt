@@ -1,3 +1,7 @@
+import CMWellBuild.autoImport._
+
+dataFolder := baseDirectory.value / "data"
+
 name := "cmwell-util"
 
 libraryDependencies ++= {

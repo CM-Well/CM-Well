@@ -1,4 +1,4 @@
-import cmwell.build.{Versions,CMWellCommon}, CMWellCommon.Tags
+import CMWellBuild.autoImport._
 
 name := "cmwell-irw"
 
@@ -12,18 +12,3 @@ libraryDependencies ++= {
     dm("com.google.guava", "guava"),
     dm("org.slf4j", "log4j-over-slf4j") % "test")
 }
-
-cassandraVersion := Versions.cassandra
-	
-cassandraCqlInit := ((resourceDirectory in Test).value / "cassandra-cql-test-commands.txt").getAbsolutePath
-
-/* - It was used when using the cassandra plugin - not needed anymore when using docker testing
-test in Test := Def.taskDyn {
-  val a: Task[String] = startCassandra.taskValue
-  val b: Task[Unit] = (test in Test).taskValue
-  val c: Task[Unit] = stopCassandra.taskValue
-  Def.task {
-    ((a doFinally b) doFinally c).value
-  }
-}.tag(Tags.Cassandra).value
-*/

@@ -1,9 +1,4 @@
-
-/**
- * Created by markz on 10/20/14.
- */
-
-package domain.testUtil
+package cmwell.domain.testUtil
 
 import cmwell.domain._
 import org.joda.time.{DateTime, DateTimeZone}

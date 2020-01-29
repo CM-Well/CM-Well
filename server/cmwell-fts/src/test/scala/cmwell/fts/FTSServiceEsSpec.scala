@@ -29,7 +29,7 @@ import org.scalatest._
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
-import domain.testUtil.InfotonGenerator.genericSystemFields
+import cmwell.domain.testUtil.InfotonGenerator.genericSystemFields
 
 /**
  * User: Israel

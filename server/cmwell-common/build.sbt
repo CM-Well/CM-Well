@@ -1,4 +1,4 @@
-import cmwell.build.Versions
+import CMWellBuild.autoImport._
 import scala.sys.process._
 
 name := "cmwell-common"
@@ -77,7 +77,7 @@ buildInfoKeys := Seq[BuildInfoKey](
   BuildInfoKey.action("gitCommitVersion") {
     Process("git rev-parse HEAD").lines.head //neat trick from SBT in action book :)
   }, // re-computed each time at compile
-  "release" -> cmwell.build.CMWellCommon.release
+  "release" -> CMWellCommon.release
 )
 
 sourceGenerators in Test += Def.task {

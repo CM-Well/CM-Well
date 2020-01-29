@@ -1,3 +1,5 @@
+import CMWellBuild.autoImport._
+
 name := "cmwell-grid-ng"
 
 libraryDependencies ++= {
@@ -32,4 +34,4 @@ javaOptions in Test ++= Seq(
   s"-Dgrid.test.root-dir=${target.value}"
 )
 
-test in Test := Def.task((test in Test).value).tag(cmwell.build.CMWellCommon.Tags.Grid).value
+test in Test := Def.task((test in Test).value).tag(CMWellCommon.CommonTags.Grid).value
