@@ -24,7 +24,6 @@ import cmwell.util.{BoxedFailure, EmptyBox, FullBox}
 import cmwell.util.collections.{partitionWith, spanWith, subtractedDistinctMultiMap, updatedDistinctMultiMap}
 import cmwell.util.exceptions.MultipleFailures
 import cmwell.util.string.Hash.crc32base64
-import cmwell.util.string.sanitizeLogLine
 import com.typesafe.scalalogging.LazyLogging
 import ld.exceptions.{ConflictingNsEntriesException, ServerComponentNotAvailableException, TooManyNsRequestsException}
 import logic.CRUDServiceFS
@@ -454,9 +453,9 @@ class TimeBasedAccumulatedNsCache private (private[this] var mainCache: Map[NsID
           Future.failed(new Exception(s"nsURLToNsID.inner failed for url [$url] and hash [$nsID]", err))
         case Success(notSameUrl) => {
           val doubleHash = crc32base64(nsID)
-          logger.warn(sanitizeLogLine(
+          logger.warn(
             s"double hashing url's [$url] hash [$nsID] to [$doubleHash] because not same as [${notSameUrl._1}]"
-          ))
+          )
           inner(doubleHash)
         }
       }
@@ -674,7 +673,7 @@ class TimeBasedAccumulatedNsCache private (private[this] var mainCache: Map[NsID
     }
 
     private[this] def handleInvalidate(key: NsID): Unit = {
-      mainCache.get(key).fold(logger.warn(sanitizeLogLine(s"tried to invalidate NsID [$key], but it's not in cache!"))) {
+      mainCache.get(key).fold(logger.warn(s"tried to invalidate NsID [$key], but it's not in cache!")) {
         case (url, prefix) =>
           mainCache -= key
           urlCache -= url

@@ -232,7 +232,7 @@ class IRWServiceNativeImpl2(
             else cmwell.util.concurrent.SimpleScheduler.scheduleFuture(delayOnError)(getFromCas(QUORUM, true))
           case io @ FullBox(i) =>
             if (isARetry) {
-              logger.warn(sanitizeLogLine(s"The uuid $uuid is only available in QUORUM"))
+              logger.warn(s"The uuid $uuid is only available in QUORUM")
               if (i.uuid != uuid)
                 logger.error(
                   s"The infoton [${i.systemFields.path}] retrieved with different uuid [${i.uuid}] from requested uuid [$uuid]"
@@ -522,7 +522,7 @@ class IRWServiceNativeImpl2(
       .flatMap((extractLast _).andThen {
         case None if level == ONE => readPathUUIDA(path, QUORUM, retry = true)
         case os =>
-          if (os.isDefined && retry) logger.warn(sanitizeLogLine(s"The path $path is only available in QUORUM"))
+          if (os.isDefined && retry) logger.warn(s"The path $path is only available in QUORUM")
           Future.successful(Box(os))
       })
       .recover(recoverAsBoxedFailure)

@@ -1,5 +1,6 @@
-name := "cmwell-dc"
+import CMWellBuild.autoImport._
 
+name := "cmwell-dc"
 
 packMain := Map("dc-standalone" -> "cmwell.dc.stream.MainStandAlone")
 packGenerateWindowsBatFile := false

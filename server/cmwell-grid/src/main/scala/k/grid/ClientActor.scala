@@ -100,13 +100,12 @@ class ClientActor extends Actor with LazyLogging {
   }
 
   lazy val pid = getMyPid
-  import cmwell.util.string.sanitizeLogLine
 
   override def receive: Receive = {
     case Hosts(machines) => {
       GridData.allKnownHosts = GridData.allKnownHosts.union(machines)
-      logger.debug(sanitizeLogLine(s"[Hosts] current machines: $machines"))
-      logger.debug(sanitizeLogLine(s"Grid upHosts: ${GridData.upHosts}"))
+      logger.debug(s"[Hosts] current machines: $machines")
+      logger.debug(s"Grid upHosts: ${GridData.upHosts}")
 
       val prevDownHosts = GridData.downHosts
       val prevUpHosts = GridData.upHosts

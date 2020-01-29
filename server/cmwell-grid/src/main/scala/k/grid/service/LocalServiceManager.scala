@@ -22,7 +22,6 @@ import k.grid.{Grid, GridJvm}
 import k.grid.service.messages._
 import scala.concurrent.duration._
 import scala.concurrent.ExecutionContext.Implicits.global
-import cmwell.util.string.sanitizeLogLine
 
 /**
   * Created by michael on 2/10/16.
@@ -120,31 +119,31 @@ class LocalServiceManager(st: ServiceTypes) extends Actor with LazyLogging {
 
   override def receive: Receive = {
     case ServiceMapping(m) =>
-      logger.debug(sanitizeLogLine(s"[ServiceMapping] current mapping: $m"))
+      logger.debug(s"[ServiceMapping] current mapping: $m")
       LocalServiceManager.mapping = m
     case RegisterServices(gm) => {
       Grid.singletonJvm = gm
-      logger.debug(sanitizeLogLine(s"[RegisterServices] registering [${st.m.keySet.mkString(",")}]"))
+      logger.debug(s"[RegisterServices] registering [${st.m.keySet.mkString(",")}]")
       val statuses = st.m.map { serviceType =>
         val isRunning = context.child(serviceType._1).isDefined
-        logger.debug(sanitizeLogLine(s"[RegisterServices] the Service ${serviceType._1} running: $isRunning"))
+        logger.debug(s"[RegisterServices] the Service ${serviceType._1} running: $isRunning")
         ServiceStatus(serviceType._1, isRunning, serviceType._2.preferredJVM)
       }.toSet
       sender ! ServiceInstantiationRequest(Grid.thisMember, statuses)
     }
     case RunService(name) => {
       if (context.child(name).isDefined) {
-        logger.warn(sanitizeLogLine(s"[RunService] the Service $name is already running."))
+        logger.warn(s"[RunService] the Service $name is already running.")
       } else {
-        logger.info(sanitizeLogLine(s"[RunService] will run $name, known Services: ${st.m.keySet.mkString("[", ",", "]")}"))
+        logger.info(s"[RunService] will run $name, known Services: ${st.m.keySet.mkString("[", ",", "]")}")
         st.m.get(name).foreach { t =>
           val a = context.actorOf(Props(t.ServiceType, t.args: _*), name)
-          logger.debug(sanitizeLogLine(s"[RunService] the path of the actor is: ${a.path}"))
+          logger.debug(s"[RunService] the path of the actor is: ${a.path}")
         }
       }
     }
     case StopService(name) => {
-      logger.info(sanitizeLogLine(s"[StopService] $name"))
+      logger.info(s"[StopService] $name")
       context.child(name).foreach(_ ! PoisonPill)
     }
   }

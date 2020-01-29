@@ -15,6 +15,7 @@
 package k.grid.service
 
 import akka.actor.Actor
+import akka.actor.Actor.Receive
 import akka.pattern.ask
 import com.typesafe.scalalogging.LazyLogging
 import k.grid.{Grid, GridJvm}
@@ -23,7 +24,6 @@ import scala.concurrent.duration._
 import cmwell.util.concurrent._
 import scala.util.Random
 import scala.concurrent.ExecutionContext.Implicits.global
-import cmwell.util.string.sanitizeLogLine
 
 /**
   * Created by michael on 2/9/16.
@@ -56,7 +56,7 @@ class ServiceCoordinator extends Actor with LazyLogging {
       }
     case SendRegistrations => {
       val jvms = Grid.jvmsAll
-      logger.debug(sanitizeLogLine(s"[SendRegistrations] currentJvms: $jvms"))
+      logger.debug(s"[SendRegistrations] currentJvms: $jvms")
       val futures = jvms.map { jvm =>
         (Grid.selectActor(LocalServiceManager.name, jvm) ? RegisterServices(Grid.thisMember))
           .mapTo[ServiceInstantiationRequest]
@@ -84,7 +84,7 @@ class ServiceCoordinator extends Actor with LazyLogging {
                 val candIndex = Random.nextInt(vec.size)
                 vec(candIndex)._2
             }
-            logger.info(sanitizeLogLine(s"[ServiceInstantiation] will run $serviceName on $winner"))
+            logger.info(s"[ServiceInstantiation] will run $serviceName on $winner")
             Grid.selectActor(LocalServiceManager.name, winner) ! RunService(serviceName)
             // We will update that currently no one is running the service, we will know if it runs only in the next sample.
             self ! UpdateServiceMapping(serviceName, None)

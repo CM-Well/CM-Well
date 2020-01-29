@@ -24,7 +24,6 @@ import com.typesafe.scalalogging.LazyLogging
 import logic.CRUDServiceFS
 import org.joda.time.format.{DateTimeFormat, ISODateTimeFormat}
 import org.joda.time.{DateTime, DateTimeZone}
-import cmwell.util.string.sanitizeLogLine
 
 import scala.concurrent.{Await, Future, Promise}
 import scala.util.parsing.combinator.{JavaTokenParsers, RegexParsers}
@@ -458,7 +457,7 @@ package util {
           case NoSuccess(msg, _) => {
             val err = s"error: $msg, accured while parsing: $xgInput"
             val ex = new IllegalArgumentException(err)
-            logger.error(sanitizeLogLine(err), ex)
+            logger.error(err, ex)
             scala.util.Failure(ex)
           }
         }

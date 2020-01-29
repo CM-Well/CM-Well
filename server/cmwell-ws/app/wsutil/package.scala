@@ -27,7 +27,6 @@ import cmwell.web.ld.cmw.CMWellRDFHelper
 import cmwell.web.ld.exceptions.{UnretrievableIdentifierException, UnsupportedURIException}
 import cmwell.ws.Settings
 import cmwell.ws.util.{ExpandGraphParser, FieldNameConverter, PathGraphExpansionParser}
-import cmwell.util.string.sanitizeLogLine
 import com.typesafe.scalalogging.LazyLogging
 import controllers.SpaMissingException
 import filters.Attrs

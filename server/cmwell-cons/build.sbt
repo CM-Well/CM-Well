@@ -1,12 +1,13 @@
 import java.nio.file.FileAlreadyExistsException
 
-import sbt.LocalProject
+import CMWellBuild.autoImport._
+
+import sbt._
 
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.sys.process._
-import cmwell.build.{Versions,CMWellBuild}
 
 libraryDependencies ++= {
   val dm = dependenciesManager.value
@@ -23,7 +24,7 @@ unmanagedResources := Seq()
 resourceGenerators in Compile += Def.task {
   val file = baseDirectory.value / "app" / "cmwell.properties"
   val gitCommitVersion = s""""git_commit_version": "${Process("git rev-parse HEAD").lineStream.head}""""
-  val buildRelease = s""""cm-well_release": "${cmwell.build.CMWellCommon.release}""""
+  val buildRelease = s""""cm-well_release": "${CMWellCommon.release}""""
   val buildVersion = s""""cm-well_version": "${version.value}""""
   val content = s"{$gitCommitVersion,\n$buildRelease,\n$buildVersion}"
   IO.write(file, content)
@@ -175,62 +176,6 @@ getWs := {
 //  destination
 //}
 
-
-def packCons(ctrl : File, cons : File , bd : File) = {
-
-  val libDir = ctrl.getAbsoluteFile / "lib"
-
-  val lib = bd / "app" / "cons-lib"
-
-  if(lib.exists()) sbt.IO.delete(lib.listFiles())
-  else lib.mkdir()
-
-
-  libDir.listFiles().foreach {
-    file =>
-      if(!file.name.contains("apache-cassandra"))
-        sbt.IO.copyFile(file,lib / file.getName ,preserveLastModified = true)
-  }
-
-  sbt.IO.copyFile(cons , bd / "app" / "cons-lib" / cons.getName , preserveLastModified =  true)
-}
-
-def packProject(projName : String, proj : File, bd : File, confDir: File, logger : Logger) = {
-  val libDir = proj.getAbsoluteFile / "lib"
-
-  val lib = bd / "app" / "lib"
-  val dependencies = bd / "app" / "dependencies"
-
-  if(!lib.exists()) lib.mkdir()
-
-  val depList = libDir.listFiles().map(_.getName).mkString("\n")
-  sbt.IO.write(dependencies / projName, depList)
-
-
-  libDir.listFiles().foreach {
-    file =>
-      val target = lib / file.getName
-      try {
-        java.nio.file.Files.createLink(target.toPath, file.toPath)
-      } catch {
-        case t:FileAlreadyExistsException => // todo: handle handle duplicated jar names.
-        case t:Throwable =>
-          logger.error(s"Error while creating hard link, will copy instead: $t ${t.getMessage}")
-          sbt.IO.copyFile(file,target ,preserveLastModified = true)
-      }
-  }
-
-  //copy conf files
-  proj.listFiles(new FileFilter {
-    override def accept(file: File): Boolean = !Set("lib","bin","VERSION","Makefile")(file.getName)
-  }).foreach{file =>
-    if(file.isDirectory) sbt.IO.copyDirectory(file,confDir / file.getName())
-    else {
-      sbt.IO.copyFile(file, confDir / file.getName())
-    }
-  }
-}
-
 def refreshAppCacheManifest(appCacheManifestFile: File) = {
   if(appCacheManifestFile.exists()) {
     val newFileContent = sbt.IO.read(appCacheManifestFile).linesIterator.map { line =>
@@ -266,11 +211,70 @@ getLib := {
   if(!lib.exists()) lib.mkdir()
   if(!dependencies.exists()) dependencies.mkdir() else sbt.IO.delete(dependencies.listFiles())
 
-  packProject("ctrl",(pack in LocalProject("ctrl") in pack).value,bd, bd / "app" / "conf" / "ctrl",logger)
-  packProject("dc",(pack in LocalProject("dc") in pack).value,bd, bd / "app" / "conf" / "dc",logger)
-  packProject("ws",(pack in LocalProject("ws") in pack).value,bd, bd / "app" / "conf" / "ws",logger)
-  packProject("bg",(pack in LocalProject("bg") in pack).value,bd, bd / "app" / "conf" / "bg",logger)
-  packCons((pack in LocalProject("cons") in pack).value, getCons.value , bd)
+  def packProject(projName : String, bd : File, confDir: File, logger : Logger) = {
+
+    // https://github.com/sbt/sbt/issues/1144 old as the world itself
+    val proj = (pack in LocalProject("cons") in pack).value
+
+    val libDir = proj.getAbsoluteFile / "lib"
+
+    val lib = bd / "app" / "lib"
+    val dependencies = bd / "app" / "dependencies"
+
+    if(!lib.exists()) lib.mkdir()
+
+    val depList = libDir.listFiles().map(_.getName).mkString("\n")
+    sbt.IO.write(dependencies / projName, depList)
+
+
+    libDir.listFiles().foreach {
+      file =>
+        val target = lib / file.getName
+        try {
+          java.nio.file.Files.createLink(target.toPath, file.toPath)
+        } catch {
+          case t:FileAlreadyExistsException => // todo: handle handle duplicated jar names.
+          case t:Throwable =>
+            logger.error(s"Error while creating hard link, will copy instead: $t ${t.getMessage}")
+            sbt.IO.copyFile(file,target ,preserveLastModified = true)
+        }
+    }
+
+    //copy conf files
+    proj.listFiles(new FileFilter {
+      override def accept(file: File): Boolean = !Set("lib","bin","VERSION","Makefile")(file.getName)
+    }).foreach{file =>
+      if(file.isDirectory) sbt.IO.copyDirectory(file,confDir / file.getName())
+      else {
+        sbt.IO.copyFile(file, confDir / file.getName())
+      }
+    }
+  }
+
+  def packCons(ctrl : File, cons : File , bd : File) = {
+
+    val libDir = ctrl.getAbsoluteFile / "lib"
+
+    val lib = bd / "app" / "cons-lib"
+
+    if(lib.exists()) sbt.IO.delete(lib.listFiles())
+    else lib.mkdir()
+
+
+    libDir.listFiles().foreach {
+      file =>
+        if(!file.name.contains("apache-cassandra"))
+          sbt.IO.copyFile(file,lib / file.getName ,preserveLastModified = true)
+    }
+
+    sbt.IO.copyFile(cons , bd / "app" / "cons-lib" / cons.getName , preserveLastModified =  true)
+  }
+
+  Array("ctrl", "dc", "ws", "bg").foreach { name =>
+    packProject(name, bd, bd / "app" / "conf" / name, logger)
+  }
+
+  packCons((pack in LocalProject("cons")).value, getCons.value, bd)
 
   lib
 }
