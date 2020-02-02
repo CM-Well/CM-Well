@@ -15,6 +15,8 @@
 
 package cmwell.crawler
 
+import java.util.Properties
+
 import akka.actor.ActorSystem
 import akka.kafka.scaladsl.Consumer
 import akka.kafka.{ConsumerSettings, Subscriptions}
@@ -30,15 +32,17 @@ import com.datastax.driver.core.ConsistencyLevel
 import com.typesafe.config.Config
 import com.typesafe.scalalogging.LazyLogging
 import org.apache.kafka.clients.consumer.{ConsumerConfig, ConsumerRecord}
+import org.apache.kafka.clients.producer.{Callback, KafkaProducer, ProducerRecord, RecordMetadata}
 import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.serialization.ByteArrayDeserializer
 import org.elasticsearch.action.{ActionRequest, DocWriteRequest}
 import org.elasticsearch.action.update.UpdateRequest
 import org.elasticsearch.common.xcontent.XContentType
 import org.joda.time.{DateTime, DateTimeZone}
+import play.api.libs.json.Json
 
 import scala.concurrent.duration.{DurationInt, DurationLong, FiniteDuration}
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.{ExecutionContext, Future, Promise}
 import scala.util.{Failure, Success, Try}
 
 //case class CrawlerPosition(offset: Long, timeStamp: Long)
@@ -83,7 +87,7 @@ case class EsBadCurrentErrorFix(details: String, lclzdCmd: LocalizedCommand) ext
 object CrawlerStream extends LazyLogging {
   case class CrawlerMaterialization(control: Consumer.Control, doneState: Future[Done])
 
-  private val requiredSystemFieldsNames = Set("dc", "indexName", "indexTime", "lastModified", "path", "type")
+  private val requiredSystemFieldsNames = Set("dc", "indexName", "indexTime", "lastModified", "lastModifiedBy", "path", "type")
   // "protocol" system field is optional; Crawler does not have to alert if it is missing.
   // However, in case it has more than one value, Crawler will detect it and report accordingly.
 
@@ -104,6 +108,14 @@ object CrawlerStream extends LazyLogging {
     val retryDuration = config.getDuration("cmwell.crawler.retryDuration").getSeconds.seconds
     val checkParallelism = config.getInt("cmwell.crawler.checkParallelism")
 
+    val kafkaProducer = {
+      val producerProperties = new Properties
+      producerProperties.put("bootstrap.servers", bootStrapServers)
+      producerProperties.put("key.serializer", "org.apache.kafka.common.serialization.ByteArraySerializer")
+      producerProperties.put("value.serializer", "org.apache.kafka.common.serialization.ByteArraySerializer")
+      new KafkaProducer[Array[Byte], Array[Byte]](producerProperties)
+    }
+
     val initialPersistOffset = Try(offsetsService.readWithTimestamp(persistId))
 
     def checkAndFixKafkaMessage(msg: ConsumerRecord[Array[Byte], Array[Byte]]): Future[Long] = {
@@ -114,14 +126,15 @@ object CrawlerStream extends LazyLogging {
         .map(checkSystemFields)(ec)
         .flatMap(checkEsVersions)(ec)
         .flatMap(fixEsCurrentState)(ec)
-        .map(reportErrors)(ec)
+        .flatMap(reportErrors)(ec)
         .map(_ => msg.offset())(ec)
     }
 
     def kafkaMessageToSingleCommand(msg: ConsumerRecord[Array[Byte], Array[Byte]]) = {
       val kafkaLocation = KafkaLocation(topic, partition, msg.offset())
       CommandSerializer.decode(msg.value) match {
-        case CommandRef(ref) => zStore.get(ref).map(cmd => LocalizedCommand(CommandSerializer.decode(cmd).asInstanceOf[SingleCommand], None, kafkaLocation))(ec)
+        case CommandRef(ref) => zStore.get(ref).map(cmd =>
+          LocalizedCommand(CommandSerializer.decode(cmd).asInstanceOf[SingleCommand], None, kafkaLocation))(ec)
         case singleCommand => Future.successful(LocalizedCommand(singleCommand.asInstanceOf[SingleCommand], None, kafkaLocation))
       }
     }
@@ -179,18 +192,17 @@ object CrawlerStream extends LazyLogging {
 
     def alterCommandLastModifiedDate(cmd: SingleCommand, newDate: DateTime) = {
       cmd match {
-        case c@WriteCommand(infoton, _, _) => c.copy(infoton = infoton.copyInfoton(lastModified = newDate))
-        case c@DeleteAttributesCommand(_, _, _, _, _, _) => c.copy(lastModified = newDate)
-        case c@DeletePathCommand(_, _, _, _) => c.copy(lastModified = newDate)
-        case c@UpdatePathCommand(_, _, _, _, _, _, _) => c.copy(lastModified = newDate)
-        case c@OverwriteCommand(infoton, _) => c.copy(infoton = infoton.copyInfoton(lastModified = newDate))
+        case c@WriteCommand(infoton, _, _) => c.copy(infoton = infoton.copyInfoton(infoton.systemFields.copy(lastModified = newDate)))
+        case c@DeleteAttributesCommand(_, _,_, _, _, _) => c.copy(lastModified = newDate)
+        case c@DeletePathCommand(_, _, _, _,_) => c.copy(lastModified = newDate)
+        case c@UpdatePathCommand(_, _, _, _,_ , _, _, _) => c.copy(lastModified = newDate)
+        case c@OverwriteCommand(infoton, _) => c.copy(infoton = infoton.copyInfoton(infoton.systemFields.copy(lastModified = newDate)))
       }
     }
 
-    lazy val fieldBreakOut = scala.collection.breakOut[Seq[(String, String, String)], SystemField, Vector[SystemField]]
     def getSystemFields(uuid: String) =
       irwService.rawReadSystemFields(uuid, ConsistencyLevel.QUORUM)
-        .map(_.collect { case (_, field, value) if field != "data" => SystemField(field, value) }(fieldBreakOut))(ec)
+        .map(_.view.collect { case (_, field, value) if field != "data" => SystemField(field, value) }.to(Vector))(ec)
 
     def enrichVersionsWithSystemFields(previousResult: DetectionResult) = {
       previousResult match {
@@ -300,14 +312,38 @@ object CrawlerStream extends LazyLogging {
     }
 
     def reportErrors(finalResult: DetectionResult) = {
+
+      def errorToKafkaRecord(errOrFix: DetectionError): ProducerRecord[Array[Byte],Array[Byte]] = {
+        val (origin, command) = {
+          val loc = errOrFix.lclzdCmd.location
+          val origin = Json.obj("topic" -> loc.topic, "partition" -> loc.partition, "offset" -> loc.offset)
+          (origin, errOrFix.lclzdCmd.cmd.toString)
+        }
+        val path = errOrFix.lclzdCmd.cmd.path.getBytes("UTF-8")
+        val msg = Json.stringify(Json.obj("details" -> errOrFix.details, "origin" -> origin, "command" -> command)).getBytes("UTF-8")
+        new ProducerRecord[Array[Byte], Array[Byte]]("red_queue", partition, path, msg)
+      }
+
+      def kafkaProduce(pRecord: ProducerRecord[Array[Byte],Array[Byte]]): Future[RecordMetadata] = {
+        val p = Promise[RecordMetadata]()
+        val callback = new Callback {
+          override def onCompletion(metadata: RecordMetadata, exception: Exception): Unit =
+            Option(exception).fold(p.success(metadata))(p.failure)
+        }
+        kafkaProducer.send(pRecord, callback)
+        p.future
+      }
+
       finalResult match {
         case fix: EsBadCurrentErrorFix =>
           logger.error(s"$crawlerId Inconsistency found: ${fix.details} for command in location ${fix.lclzdCmd.location}. " +
             s"Original command: ${fix.lclzdCmd.cmd}${fix.lclzdCmd.originalLastModified.fold("")(olm => s" [Original command date: $olm]")} and was fixed.")
+          kafkaProduce(errorToKafkaRecord(fix)).map(_ => fix)(ec)
         case err: DetectionError =>
           logger.error(s"$crawlerId Inconsistency found: ${err.details} for command in location ${err.lclzdCmd.location}. " +
             s"Original command: ${err.lclzdCmd.cmd}${err.lclzdCmd.originalLastModified.fold("")(olm => s" [Original command date: $olm]")}")
-        case _ => /* Do nothing */
+          kafkaProduce(errorToKafkaRecord(err)).map(_ => err)(ec)
+        case other => Future.successful(other)
       }
     }
 

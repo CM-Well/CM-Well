@@ -17,6 +17,7 @@
 package cmwell.it
 
 import java.io.{ByteArrayInputStream, StringWriter}
+import java.util.concurrent.Executors
 
 import cmwell.util.concurrent.SimpleScheduler.scheduleFuture
 import cmwell.util.http.{SimpleResponse, SimpleResponseHandler, StringPath}
@@ -67,8 +68,8 @@ trait Helpers { self: LazyLogging =>
                               (__ \ "@id.sys").json.prune
   val jsonlInfotonArraySorterAndUuidDateIdEraser = (__ \ "infotons").json.update(
     Reads.JsArrayReads.map{
-      case JsArray(xs: Seq[JsObject @unchecked]) => JsArray(xs.map {
-        case obj => obj.transform(jsonlUuidDateIdEraser andThen jsonlSorter).get
+      case JsArray(xs: collection.IndexedSeq[JsObject @unchecked]) => JsArray(xs.map { obj: JsValue =>
+        obj.transform(jsonlUuidDateIdEraser andThen jsonlSorter).get
       }.sortWith { case (i,j) =>
         val si = ((i \ "path.sys")(0) \ "value").as[String]
         val sj = ((j \ "path.sys")(0) \ "value").as[String]
@@ -79,8 +80,8 @@ trait Helpers { self: LazyLogging =>
   )
   val bagUuidDateEraserAndSorter =  (__ \ "infotons").json.update(
     Reads.JsArrayReads.map{
-      case JsArray(xs: Seq[JsObject @unchecked]) => JsArray(xs.map {
-        case obj => obj.transform(uuidDateEraser andThen fieldsSorter).get
+      case JsArray(xs: collection.IndexedSeq[JsObject @unchecked]) => JsArray(xs.map { obj: JsValue =>
+        obj.transform(uuidDateEraser andThen fieldsSorter).get
       }.sortWith { case (i,j) =>
         val si = (i \ "system" \ "path").as[String]
         val sj = (j \ "system" \ "path").as[String]
@@ -151,7 +152,7 @@ trait Helpers { self: LazyLogging =>
 
   // compare two rdf strings.
   def compareRDF(s1 : String , s2 : String , format : String, excludes : Array[String]) : Either[String, Unit] = {
-    import scala.collection.JavaConversions._
+    import scala.collection.JavaConverters._
     val model1: Model = ModelFactory.createDefaultModel
     val model2: Model = ModelFactory.createDefaultModel
     model1.read(new ByteArrayInputStream(s1.getBytes("UTF-8")), null, format)
@@ -161,8 +162,8 @@ trait Helpers { self: LazyLogging =>
     val selector = new org.apache.jena.rdf.model.SimpleSelector(null,null, null.asInstanceOf[org.apache.jena.rdf.model.RDFNode]) {
       override def selects(s: Statement): Boolean = s.getSubject.isAnon
     }
-    model1.listStatements(selector).toList.foreach(model1.remove)
-    model2.listStatements(selector).toList.foreach(model2.remove)
+    model1.listStatements(selector).asScala.toList.foreach(model1.remove)
+    model2.listStatements(selector).asScala.toList.foreach(model2.remove)
 
     // remove the values that varies according to time.
     model2.remove(getStatementsExcludes(model2, excludes))
@@ -213,9 +214,6 @@ trait Helpers { self: LazyLogging =>
       val strWriter2 = new StringWriter
       model1.write(strWriter1,format,null)
       model2.write(strWriter2,format,null)
-      // scalastyle:off
-      println(s"${strWriter1.toString}\n\ndiffers from:\n\n${strWriter2.toString}")
-      // scalastyle:on
     }
     rv
   }
@@ -250,7 +248,7 @@ trait Helpers { self: LazyLogging =>
     import cmwell.util.concurrent.unsafeRetryUntil
     import cmwell.util.http.{SimpleHttpClient, SimpleResponse, SimpleResponseHandler}
     import SimpleHttpClient.{Body, SimpleMessageHandler}
-    val ec = scala.concurrent.ExecutionContext.global
+    val ec = ExecutionContext.fromExecutor(Executors.newWorkStealingPool(10))
 
     private def retryOn503Ingests[T](request: => Future[SimpleResponse[T]]): Future[SimpleResponse[T]] =
       unsafeRetryUntil[SimpleResponse[T]](_.status != 503, 23, 42.millis, 2)(request)(ec)

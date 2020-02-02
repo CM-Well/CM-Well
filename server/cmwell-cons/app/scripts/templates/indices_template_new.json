@@ -9,6 +9,15 @@
         "parent_hierarchy_analyzer": {
           "tokenizer": "path_hierarchy",
           "type": "custom"
+        },
+        "comma_analyzer": {
+          "tokenizer": "comma_tokenizer"
+        }
+      },
+      "tokenizer": {
+        "comma_tokenizer": {
+          "type": "simple_pattern_split",
+          "pattern": ","
         }
       }
     },
@@ -191,6 +200,12 @@
           "current": {
             "type": "boolean",
             "store": true
+          },
+          "lastModifiedBy": {
+            "type": "text",
+            "analyzer": "comma_analyzer",
+            "store": true,
+            "norms": false
           }
         }
       }

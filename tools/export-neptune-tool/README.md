@@ -42,11 +42,11 @@ In order to mount and persist the position in an aws s3 bucket, you should insta
 
 For Example:
 
-`java -Xmx2000m -jar target/scala-2.12/neptune-export-import-tool-assembly-0.1.jar --source-cluster "10.85.11.111:9000" --neptune-cluster "localhost:9999" --ingest-connection-pool-size  50`
-`java -Xmx2000m -jar target/scala-2.12/neptune-export-import-tool-assembly-0.1.jar --source-cluster "cmwell-prod-cluster.thomsonreuters.com" --neptune-cluster "localhost:9999" --ingest-connection-pool-size  50`
+`java -Xmx2000m -cp target/scala-2.12/neptune-export-import-tool-assembly-0.1.jar cmwell.tools.neptune.export.Main --source-cluster "10.85.11.111:9000" --neptune-cluster "localhost:9999" --ingest-connection-pool-size  50`
+`java -Xmx2000m -cp target/scala-2.12/neptune-export-import-tool-assembly-0.1.jar cmwell.tools.neptune.export.Main --source-cluster "cmwell-prod-cluster.thomsonreuters.com" --neptune-cluster "localhost:9999" --ingest-connection-pool-size  50`
 
 - There are additional optional parameters to run the tool.
- please run `java -jar target/scala-2.12/neptune-poc-export-tool-assembly-0.1.jar --help` 
+ please run `java -cp target/scala-2.12/neptune-poc-export-tool-assembly-0.1.jar cmwell.tools.neptune.export.Main --help` 
 in order to see the list of parameters and their meaning
 
 # Tool Params:

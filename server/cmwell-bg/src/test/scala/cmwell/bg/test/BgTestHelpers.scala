@@ -43,8 +43,8 @@ object BgTestHelpers {
     // scalastyle:off
     val initCommands = Some(List(
       "CREATE KEYSPACE IF NOT EXISTS data2 WITH REPLICATION = {'class' : 'SimpleStrategy', 'replication_factor' : 1};",
-      "CREATE TABLE IF NOT EXISTS data2.Path ( path text, uuid text, last_modified timestamp, PRIMARY KEY ( path, last_modified, uuid ) ) WITH CLUSTERING ORDER BY (last_modified DESC, uuid ASC) AND compression = { 'sstable_compression' : 'LZ4Compressor' } AND caching = {'keys':'ALL', 'rows_per_partition':'1'};",
-      "CREATE TABLE IF NOT EXISTS data2.Infoton (uuid text, quad text, field text, value text, data blob, PRIMARY KEY (uuid,quad,field,value)) WITH compression = { 'sstable_compression' : 'LZ4Compressor' } AND caching = {'keys':'ALL', 'rows_per_partition':'1000'};"
+      "CREATE TABLE IF NOT EXISTS data2.Path ( path text, uuid text, last_modified timestamp, PRIMARY KEY ( path, last_modified, uuid ) ) WITH CLUSTERING ORDER BY (last_modified DESC, uuid ASC) AND compression = { 'class' : 'LZ4Compressor' } AND caching = {'keys':'ALL', 'rows_per_partition':'1'};",
+      "CREATE TABLE IF NOT EXISTS data2.Infoton (uuid text, quad text, field text, value text, data blob, PRIMARY KEY (uuid,quad,field,value)) WITH compression = { 'class' : 'LZ4Compressor' } AND caching = {'keys':'ALL', 'rows_per_partition':'1000'};"
     ))
     // scalastyle:on
     Dao("Test","data2", address, port, initCommands = initCommands)
@@ -53,7 +53,7 @@ object BgTestHelpers {
   def ftsOverridesConfig(address: String, port: Int) = {
     ConfigFactory.load()
       .withValue("ftsService.clusterName", ConfigValueFactory.fromAnyRef("docker-cluster"))
-      .withValue("ftsService.transportAddress", ConfigValueFactory.fromAnyRef(address))
+      .withValue("ftsService.transportAddress", ConfigValueFactory.fromIterable(java.util.Arrays.asList(address)))
       .withValue("ftsService.transportPort", ConfigValueFactory.fromAnyRef(port))
   }
 

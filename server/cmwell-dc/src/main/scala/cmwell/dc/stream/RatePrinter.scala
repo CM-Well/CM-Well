@@ -17,21 +17,21 @@ package cmwell.dc.stream
 import akka.stream.{Attributes, FlowShape, Inlet, Outlet}
 import akka.stream.stage.{GraphStage, GraphStageLogic, InHandler, OutHandler}
 import cmwell.dc.LazyLogging
-import cmwell.dc.stream.MessagesTypesAndExceptions.DcInfo
+import cmwell.dc.stream.MessagesTypesAndExceptions.{DcInfo, DcInfoKey}
 
 /**
   * Created by eli on 21/08/16.
   */
 object RatePrinter {
-  def apply[A](dcInfo: DcInfo,
+  def apply[A](dcKey: DcInfoKey,
                elementCount: A => Double,
                elementText: String,
                elementsText: String,
                printFrequency: Int): RatePrinter[A] =
-    new RatePrinter(dcInfo, elementCount, elementText, elementsText, printFrequency)
+    new RatePrinter(dcKey, elementCount, elementText, elementsText, printFrequency)
 }
 
-class RatePrinter[A](dcInfo: DcInfo,
+class RatePrinter[A](dcKey: DcInfoKey,
                      elementCount: A => Double,
                      elementText: String,
                      elementsText: String,
@@ -63,7 +63,7 @@ class RatePrinter[A](dcInfo: DcInfo,
             if (totalElementsGot - printedAtElementNo >= printFrequency) {
               val rate = totalElementsGot / (currentTime - startTime) * 1000
               logger.info(
-                s"Data Center ID ${dcInfo.id}: Got ${currentElementsGot.formatted("%.2f")} $elementText. Total ${totalElementsGot
+                s"Sync $dcKey: Got ${currentElementsGot.formatted("%.2f")} $elementText. Total ${totalElementsGot
                   .formatted("%.2f")} $elementsText. Read rate: avg: ${rate.formatted("%.2f")} current: ${localRate
                   .formatted("%.2f")} $elementText/second"
               )

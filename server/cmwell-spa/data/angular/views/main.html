@@ -102,7 +102,7 @@
             <a href="{{ item.type==='FileInfoton' ? '#' : item.linkTo || item.path }}" data-path="{{item.path}}" class="cmw-row {{ item.additionalCssClasses }}" ng-class="item.displayName ? 'with-display-name' : ''" ng-repeat="item in infotons">
                 <span class="icon" data-mime="{{item.mimetype}}">&nbsp;</span>
                 <span ng-if="item.displayName" class="infoton-display-name">{{item.displayName}}<br/></span>
-                <span ng-class="item.displayName ? 'infoton-path' : ''" ellipsis>{{item.displayName ? item.path : item.path.substring(item.path.lastIndexOf('/') + 1).replace('%23','#')}}</span>
+                <span ng-class="item.displayName ? 'infoton-path' : ''" ellipsis>{{item.displayName ? item.path : item.path.substring(item.path.lastIndexOf('/') + 1).replace('%23','#').replace('%25','%')}}</span>
                 <span ng-if="item.linkTo" class="link-infoton-target not-displayed">{{item.linkTo}}</span>
                 <span class="floaty not-displayed" ng-bind-html="item.floaty | toFloatyMarkup"></span>
             </a>

@@ -16,10 +16,8 @@ package cmwell.tools.data.utils.akka
 
 import akka.actor.ActorSystem
 import akka.http.scaladsl._
-import akka.http.scaladsl.settings.{ClientConnectionSettings, ConnectionPoolSettings}
 import akka.stream.Materializer
 import cmwell.tools.data.utils.logging.LabelId
-import com.typesafe.config.ConfigFactory
 
 object HttpConnections extends DataToolsConfig {
 
@@ -28,11 +26,8 @@ object HttpConnections extends DataToolsConfig {
     val userAgent = label.fold(s"cmwell-data-tools using akka-http/${config.getString("akka.version")}")(
       l => s"cmwell-data-tools ${l.id}"
     )
-    val settings = ClientConnectionSettings(
-      ConfigFactory
-        .parseString(s"akka.http.host-connection-pool.client.user-agent-header=$userAgent")
-        .withFallback(config)
-    )
+
+    val settings = AkkaUtils.generateClientConnectionSettings(userAgent)
 
     protocol match {
       case "https" => Http().outgoingConnectionHttps(host, port, settings = settings)
@@ -46,11 +41,8 @@ object HttpConnections extends DataToolsConfig {
     val userAgent = label.fold(s"cmwell-data-tools using akka-http/${config.getString("akka.version")}")(
       l => s"cmwell-data-tools ${l.id}"
     )
-    val settings = ConnectionPoolSettings(
-      ConfigFactory
-        .parseString(s"akka.http.host-connection-pool.client.user-agent-header=$userAgent")
-        .withFallback(config)
-    )
+
+    val settings = AkkaUtils.generateConnectionPoolSettings(Some(userAgent))
 
     protocol match {
       case "https" => Http().newHostConnectionPoolHttps[T](host, port, settings = settings)
@@ -64,11 +56,8 @@ object HttpConnections extends DataToolsConfig {
     val userAgent = label.fold(s"cmwell-data-tools using akka-http/${config.getString("akka.version")}")(
       l => s"cmwell-data-tools ${l.id}"
     )
-    val settings = ConnectionPoolSettings(
-      ConfigFactory
-        .parseString(s"data-tools.akka.http.host-connection-pool.client.user-agent-header=$userAgent")
-        .withFallback(config)
-    )
+
+    val settings = AkkaUtils.generateConnectionPoolSettings(Some(userAgent))
 
     protocol match {
       case "https" => Http().cachedHostConnectionPoolHttps[T](host, port, settings = settings)

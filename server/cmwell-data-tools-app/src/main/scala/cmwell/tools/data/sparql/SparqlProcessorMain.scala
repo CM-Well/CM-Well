@@ -18,6 +18,7 @@ import java.io.FileInputStream
 import java.nio.file.{Files, Paths}
 
 import akka.stream.scaladsl.{Keep, Sink, Source}
+import cmwell.tools.data.ingester.Ingester.IngesterRuntimeConfig
 import cmwell.tools.data.ingester._
 import cmwell.tools.data.utils.akka.Implicits._
 import cmwell.tools.data.utils.akka._
@@ -93,14 +94,14 @@ object SparqlProcessorMain extends App {
       isNeedWrapping = Opts.sparqlQueryWrap(),
       parallelism = Opts.parallelism(),
       indexTime = Opts.indexTime(),
-      spQueryParamsBuilder = (p: Seq[String], v: Map[String,String]) => "sp.pid=" + p.head.substring(p.head.lastIndexOf('-') + 1),
+      spQueryParamsBuilder = (p: Seq[String], v: Map[String,String], q: Boolean) => "sp.pid=" + p.head.substring(p.head.lastIndexOf('-') + 1),
       sparqlQuery = sparqlQuery
     )
   } else if (Opts.fromPaths()) {
     SparqlProcessor.createSourceFromPathsInputStream(
       baseUrl = Opts.srcHost(),
       isNeedWrapping = Opts.sparqlQueryWrap(),
-      spQueryParamsBuilder = (p: Seq[String], v: Map[String,String]) => "sp.pid=" + p.head.substring(p.head.lastIndexOf('-') + 1),
+      spQueryParamsBuilder = (p: Seq[String], v: Map[String,String], q: Boolean) => "sp.pid=" + p.head.substring(p.head.lastIndexOf('-') + 1),
       sparqlQuery = sparqlQuery,
       parallelism = Opts.parallelism(),
       in = System.in
@@ -109,7 +110,7 @@ object SparqlProcessorMain extends App {
     SparqlProcessor.createSourceFromToken(
       baseUrl = Opts.srcHost(),
       isNeedWrapping = Opts.sparqlQueryWrap(),
-      spQueryParamsBuilder = (p: Seq[String], v: Map[String,String]) => "sp.pid=" + p.head.substring(p.head.lastIndexOf('-') + 1),
+      spQueryParamsBuilder = (p: Seq[String], v: Map[String,String], q: Boolean) => "sp.pid=" + p.head.substring(p.head.lastIndexOf('-') + 1),
       sparqlQuery = sparqlQuery,
       parallelism = Opts.parallelism(),
       token = Opts.positionToken()
@@ -145,17 +146,23 @@ object SparqlProcessorMain extends App {
     .map(concatByteStrings(_, endl))
     .async
 
+
   val result = if (Opts.ingest()) {
-    Ingester
-      .ingest(
-        baseUrl = Opts.dstHost(),
+
+    import scala.concurrent.duration._
+
+    infotonSource.map(_ -> None).via(DownloaderStats(format = "ntriples")).map( _._1 -> None)
+      .groupedWeightedWithin((25*1024), 10.seconds)(_._1.size)
+      .via(Ingester.ingesterFlow(baseUrl = Opts.dstHost(),
         format = SparqlProcessor.format,
         writeToken = Opts.writeToken.toOption,
-        source = infotonSource.map(_ -> None).via(DownloaderStats(format = "ntriples")).map(_._1)
-      )
+        extractContext = (a:Any) => IngesterRuntimeConfig(true)
+      ))
+      .map { d => d._1}
       .async
       .via(IngesterStats(isStderr = true))
       .runWith(Sink.ignore)
+
   } else {
     // display statistics of received infotons
     infotonSource

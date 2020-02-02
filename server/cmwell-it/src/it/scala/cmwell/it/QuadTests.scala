@@ -42,12 +42,14 @@ class QuadTests extends AsyncFunSpec with Matchers with Helpers with NSHashesAnd
     Json.obj(
       "type.sys" -> Json.arr(Json.obj("value" -> "ObjectInfoton")),
       "path.sys" -> Json.arr(Json.obj("value" -> s"/example.org/comics/characters/$name")),
+      "lastModifiedBy.sys" -> Json.arr(Json.obj("value" -> "pUser")),
       "dataCenter.sys" -> Json.arr(Json.obj("value" -> dcName)),
       "parent.sys" -> Json.arr(Json.obj("value" -> "/example.org/comics/characters")))
   }
 
   val sEnemies = Json.obj("type" -> "ObjectInfoton",
-    "system" -> Json.obj("path" -> "/example.org/comics/characters/spiderman",
+    "system" -> Json.obj("lastModifiedBy" -> "pUser",
+      "path" -> "/example.org/comics/characters/spiderman",
       "parent" -> "/example.org/comics/characters",
       "dataCenter" -> dcName),
     "fields" -> Json.obj("enemyOf.rel" -> Json.arr(
@@ -59,6 +61,7 @@ class QuadTests extends AsyncFunSpec with Matchers with Helpers with NSHashesAnd
     "type.sys"             -> arr(Json.obj("value" -> "ObjectInfoton")),
     "path.sys"             -> arr(Json.obj("value" -> "/example.org/comics/characters/batman")),
     "parent.sys"           -> arr(Json.obj("value" -> "/example.org/comics/characters")),
+    "lastModifiedBy.sys" -> Json.arr(Json.obj("value" -> "pUser")),
     "dataCenter.sys"       -> arr(Json.obj("value" -> dcName)),
     "enemyOf.rel" -> enemies.seq
   ).transform(jsonlSorter).get
@@ -66,6 +69,7 @@ class QuadTests extends AsyncFunSpec with Matchers with Helpers with NSHashesAnd
   def supermanWithQuad(quad: String) = Json.obj(
     "type.sys" -> Json.arr(Json.obj("value" -> "ObjectInfoton")),
     "path.sys" -> Json.arr(Json.obj("value" -> "/example.org/comics/characters/superman")),
+    "lastModifiedBy.sys" -> Json.arr(Json.obj("value" -> "pUser")),
     "protocol.sys" -> Json.arr(Json.obj("value" -> "http")),
     "dataCenter.sys" -> Json.arr(Json.obj("value" -> dcName)),
     "parent.sys" -> Json.arr(Json.obj("value" -> "/example.org/comics/characters")),
@@ -126,24 +130,24 @@ class QuadTests extends AsyncFunSpec with Matchers with Helpers with NSHashesAnd
     }
 
     val failGlobalQuadReplace = ingestingNquads.flatMap { _ => {
-        val data = """<> <cmwell://meta/sys#replaceGraph> <*> ."""
-        Http.post(_in, data, None, List("format" -> "nquads"), tokenHeader).map { res =>
-          withClue(res) {
-            res.status should be(400)
-          }
+      val data = """<> <cmwell://meta/sys#replaceGraph> <*> ."""
+      Http.post(_in, data, None, List("format" -> "nquads"), tokenHeader).map { res =>
+        withClue(res) {
+          res.status should be(400)
         }
       }
     }
+    }
 
-      val failTooManyGraphReplaceStatements = ingestingNquads.flatMap { _ =>
+    val failTooManyGraphReplaceStatements = ingestingNquads.flatMap { _ =>
       val stmtPrefix = "<> <cmwell://meta/sys#replaceGraph> <http://graph.number/"
       val stmtSuffix = "> .\n"
       val ntriplesRG = (1 to 21).mkString(stmtPrefix, stmtSuffix + stmtPrefix, stmtSuffix)
       Http.post(_in, ntriplesRG, None, List("format" -> "ntriples"), tokenHeader).map { res =>
-          withClue(res) {
-            res.status should be(400)
-          }
+        withClue(res) {
+          res.status should be(400)
         }
+      }
     }
 
     val fSpiderman1 = ingestingNquads.flatMap(_ =>
@@ -236,9 +240,9 @@ class QuadTests extends AsyncFunSpec with Matchers with Helpers with NSHashesAnd
         if (payload.toString == "Infoton not found") false
         else
           Json
-          .parse(res.payload)
-          .transform(jsonlSorter andThen jsonlUuidDateIdEraser)
-          .get == supermanWithQuad("http://example.org/graphs/superman")
+            .parse(res.payload)
+            .transform(jsonlSorter andThen jsonlUuidDateIdEraser)
+            .get == supermanWithQuad("http://example.org/graphs/superman")
     }.map { res =>
       withClue(res) {
         Json
@@ -302,6 +306,7 @@ class QuadTests extends AsyncFunSpec with Matchers with Helpers with NSHashesAnd
       val expected = Json.obj(
         "type.sys" -> Json.arr(Json.obj("value" -> "ObjectInfoton")),
         "path.sys" -> Json.arr(Json.obj("value" -> "/example.org/comics/characters/superman")),
+        "lastModifiedBy.sys" -> Json.arr(Json.obj("value" -> "pUser")),
         "dataCenter.sys" -> Json.arr(Json.obj("value" -> dcName)),
         "parent.sys" -> Json.arr(Json.obj("value" -> "/example.org/comics/characters")),
         "sameAs.owl" -> Json.arr(
@@ -328,9 +333,9 @@ class QuadTests extends AsyncFunSpec with Matchers with Helpers with NSHashesAnd
     }
     val fBatman01 = ingestingNquads.flatMap(_ => spinCheck(100.millis, true)(Http.get(batman, List("format" -> "jsonl"))){
       res => val payload = res.payload
-      if (payload.toString == "Infoton not found") false
-      else
-        Json.parse(res.payload).transform(jsonlSorter andThen jsonlUuidDateIdEraser).get == batmanExpected
+        if (payload.toString == "Infoton not found") false
+        else
+          Json.parse(res.payload).transform(jsonlSorter andThen jsonlUuidDateIdEraser).get == batmanExpected
     }.map { res =>
       withClue(res) {
         Json
@@ -725,6 +730,7 @@ class QuadTests extends AsyncFunSpec with Matchers with Helpers with NSHashesAnd
         "type.sys"             -> arr(Json.obj("value" -> "ObjectInfoton")),
         "path.sys"             -> arr(Json.obj("value" -> "/example.org/comics/characters/batman")),
         "parent.sys"           -> arr(Json.obj("value" -> "/example.org/comics/characters")),
+        "lastModifiedBy.sys" -> Json.arr(Json.obj("value" -> "pUser")),
         "dataCenter.sys"       -> arr(Json.obj("value" -> dcName)),
         "collaboratesWith.rel" -> Json.arr(
           Json.obj(

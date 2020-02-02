@@ -61,6 +61,9 @@ The following diagram shows a physical view of the CM-Well modules running on a 
 - JVMs of different modules are isolated to enhance robustness.
 - The nodes and the system as a whole are self-managed and self-healing, continually checking the health of all components and performing the required terminations, restarts and failovers in case of failures.
 
-![image](../../_Images/physical-view.png)
+!!! note
+    The ES Master and Zookeeper instances can potentially run on any node, but in practice are activated on one node per cluster.
+
+![image](../../_Images/physical-view-one-CAS.png)
 
  

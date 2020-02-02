@@ -150,10 +150,10 @@ angular.module('cmwellAngApp.controllers', [])
                 var path = childInfoton.system.path
                     , res = {
                         uuid: childInfoton.system.uuid,
-                        path: path.replace('#','%23'),
+                        path: path.replace('%','%25').replace('#','%23'),
                         displayName: '',
                         mimetype: getMimeType(childInfoton),
-                        linkTo: (childInfoton.linkTo||'').replace('#','%23'),
+                        linkTo: (childInfoton.linkTo||'').replace('%','%25').replace('#','%23'),
                         type: childInfoton.type
                     };
 
@@ -242,7 +242,7 @@ angular.module('cmwellAngApp.controllers', [])
         fields = fields ? '<span class="separator"></span><a class="link-out-icon type-breadcrumb" href="'+location.href+'" target="_blank">'+fields+'</a>' : '';
 
         return lock + '<a class="home-link" href="/"></a>' + (path==='/' ? '' :
-                _(path.split('/')).chain().compact().map(function(bc){ return '<span class="separator"></span><a href="'+(acc+=bc.replace('#','%23')+'/')+'">'+bc+'</a>'; }).value().join('')) + fields;
+                _(path.split('/')).chain().compact().map(function(bc){ return '<span class="separator"></span><a href="'+(acc+=bc.replace('%','%25').replace('#','%23')+'/')+'">'+bc+'</a>'; }).value().join('')) + fields;
     }
 
     , createFloaty = function(infoton) {
@@ -650,7 +650,7 @@ angular.module('cmwellAngApp.controllers', [])
     if(md5Regex.test($location.hash()))
         location.href = '/ii/'+$location.hash();
 
-    var path = ($routeParams.path || $routeParams.infotonPath || '').replace('#','%23')
+    var path = ($routeParams.path || $routeParams.infotonPath || '').replace('%','%25').replace('#','%23')
         , offset = $routeParams.offset ? +$routeParams.offset : 0
         , length = $routeParams.length ? +$routeParams.length : cmwell.constants.compoundInfotonResultsLength
         // , field = $routeParams.field

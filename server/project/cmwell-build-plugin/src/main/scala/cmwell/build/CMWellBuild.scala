@@ -18,12 +18,11 @@ package cmwell.build
 import com.github.tkawachi.doctest.DoctestPlugin
 import coursier.cache.Cache
 import coursier.util.Task
-import coursier.{Fetch, Resolve}
+import xerial.sbt.pack.PackPlugin
 //import org.scalafmt.sbt.ScalafmtPlugin
 import org.scalastyle.sbt.ScalastylePlugin
 import sbtdynver.DynVerPlugin
-import coursier.sbtcoursier.CoursierPlugin
-import net.virtualvoid.sbt.graph.DependencyGraphPlugin
+//import net.virtualvoid.sbt.graph.DependencyGraphPlugin
 import sbt.Keys._
 import sbt._
 
@@ -55,7 +54,7 @@ object CMWellBuild extends AutoPlugin {
 		val install = TaskKey[Map[Artifact, File]]("install", "build + test, much like 'mvn install'")
 		val dataFolder = TaskKey[File]("data-folder", "returns the directory of static data to be uploaded")
 		val printDate = TaskKey[Unit]("print-date", "prints the date")
-		val fullTest = TaskKey[Unit]("full-test", "executes all tests in project in parallel (with respect to dependent tests)")
+		val fullTest = TaskKey[Unit]("fullTest", "executes all tests in project in parallel (with respect to dependent tests)")
 		val getData = TaskKey[Seq[java.io.File]]("get-data", "get data to upload to cm-well")
 		val getExternalComponents = TaskKey[Iterable[File]]("get-external-components", "get external dependencies binaries")
 		val testScalastyle = taskKey[Unit]("testScalastyle")
@@ -66,7 +65,6 @@ object CMWellBuild extends AutoPlugin {
 
 	import autoImport._
 	import DoctestPlugin.autoImport._
-	import coursier.sbtcoursier.CoursierPlugin.autoImport._
 //import ScalafmtPlugin.autoImport._
 	import ScalastylePlugin.autoImport._
 	import DynVerPlugin.autoImport._
@@ -82,13 +80,13 @@ object CMWellBuild extends AutoPlugin {
 
 	def fetchZookeeperApacheMirror(version: String)(implicit ec: ExecutionContext): Future[File] = {
 		val ext = "tar.gz"
-		val url = s"http://www-$apacheMirror.apache.org/dist/zookeeper/zookeeper-$version/zookeeper-$version.$ext"
+		val url = s"http://www-$apacheMirror.apache.org/dist/zookeeper/zookeeper-$version/apache-zookeeper-$version-bin.$ext"
 		fetchArtifact(url)
 	}
 
 	def fetchZookeeperApacheArchive(version: String)(implicit ec: ExecutionContext): Future[File] = {
 		val ext = "tar.gz"
-		val url = s"https://archive.apache.org/dist/zookeeper/zookeeper-$version/zookeeper-$version.$ext"
+		val url = s"https://archive.apache.org/dist/zookeeper/zookeeper-$version/apache-zookeeper-$version-bin.$ext"
 		fetchArtifact(url)
 	}
 
@@ -182,7 +180,7 @@ object CMWellBuild extends AutoPlugin {
 	}
 
 	def fetchArtifact(url: String)(implicit es: ExecutionContext): Future[java.io.File] = {
-		import coursier.core.{Artifact, Attributes}
+		import coursier.util.Artifact
 		val sig = Artifact(
 			url + ".asc",
 			Map.empty,
@@ -197,11 +195,8 @@ object CMWellBuild extends AutoPlugin {
 			Map(
 				"MD5" -> (url + ".md5"),
 				"SHA-1" -> (url + ".sha1"),
-				"SHA-256" -> (url + ".sha256")
-				//SHA-512 is disabled until https://github.com/coursier/coursier/issues/1108 will be fixed
-				//(coursier parser doesn't recognize sha512 hash length, see above issue)
-				//This means that fetching ES currently doesn't have any checksum check!
-				//"SHA-512" -> (url + ".sha512")
+				"SHA-256" -> (url + ".sha256"),
+				"SHA-512" -> (url + ".sha512")
 			),
 			Map("sig" -> sig),
 			changing = false,
@@ -218,7 +213,7 @@ object CMWellBuild extends AutoPlugin {
 	}
 
 	def alternateUnvalidatedFetchArtifact(url: String, ext: String)(implicit es: ExecutionContext): Future[java.io.File] = {
-		import coursier.core.{Artifact, Attributes}
+		import coursier.util.Artifact
 
 		val art = Artifact(
 			url,
@@ -235,10 +230,10 @@ object CMWellBuild extends AutoPlugin {
 		}
 	}
 
-	override def requires = CoursierPlugin && ScalastylePlugin /*&& ScalafmtPlugin*/ && DoctestPlugin && DependencyGraphPlugin
+	override def requires = PackPlugin && ScalastylePlugin /*&& ScalafmtPlugin*/ && DoctestPlugin /*&& DependencyGraphPlugin*/
 
 	override def projectSettings = Seq(
-		scalastyleFailOnError := true,
+		scalastyleFailOnError := false,
 		testScalastyle in ThisProject := (scalastyle in ThisProject).in(Test).toTask("").value,
 		(test in Test) := ((test in Test) dependsOn testScalastyle).value,
 		compileScalastyle in ThisProject := (scalastyle in ThisProject).in(Compile).toTask("").value,
@@ -247,7 +242,6 @@ object CMWellBuild extends AutoPlugin {
 		logLevel in (scalastyle in Compile) := Level.Warn,
 		//scalafmtOnCompile := true,
 		//doctestWithDependencies := false,
-    coursierMaxIterations := 200,
 		Keys.fork in Test := true,
 		libraryDependencies ++= {
 			val dm = dependenciesManager.value

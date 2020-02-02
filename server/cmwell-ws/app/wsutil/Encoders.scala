@@ -23,7 +23,7 @@ import org.apache.commons.codec.binary.Base64
 import org.joda.time.format.{DateTimeFormat, ISODateTimeFormat}
 import org.joda.time.{DateTime, DateTimeZone}
 import play.api.libs.json._
-
+import cmwell.domain.{SystemFields => SF}
 import scala.collection.mutable.ListBuffer
 import scala.util.{Failure, Success, Try}
 
@@ -100,14 +100,14 @@ object Encoders extends LazyLogging{
         Try(num.toLongExact) match {
           case Success(long) => FLong(long)
           case Failure(_) =>
-            num.toBigIntExact() match {
+            num.toBigIntExact match {
               case Some(bigInt) => FBigInt(bigInt.underlying())
               case None =>
                 num.isDecimalFloat match {
-                  case true => FFloat(num.floatValue())
+                  case true => FFloat(num.floatValue)
                   case false =>
                     num.isDecimalDouble match {
-                      case true  => FDouble(num.doubleValue())
+                      case true  => FDouble(num.doubleValue)
                       case false => FBigDecimal(num.underlying())
                     }
                 }
@@ -124,17 +124,18 @@ object Encoders extends LazyLogging{
       * @param node
       * @return
       */
-    private def processSystem(node: JsValue): (String, DateTime, String, Option[String]) = {
+    private def processSystem(node: JsValue): (String, DateTime, String, String, String) = {
       val pathOpt = (node \ "path").asOpt[String]
       val lmOpt = (node \ "lastModified")
         .asOpt[String]
         .orElse((node \ "modifiedDate").asOpt[String])
         .flatMap(cmwell.util.string.parseDate)
+      val modifier = (node \ "lastModifiedBy").asOpt[String]
       val dataCenter = (node \ "dataCenter").asOpt[String].getOrElse(Settings.dataCenter)
-      val protocol = (node \ "protocol").asOpt[String]
+      val protocol = (node \ "protocol").asOpt[String].getOrElse("http")
       pathOpt match {
         case None    => throw InfotonParsingException("No path specified in system")
-        case Some(p) => (p, lmOpt.getOrElse(new DateTime), dataCenter, protocol)
+        case Some(p) => (p, lmOpt.getOrElse(new DateTime), modifier.getOrElse(""), dataCenter, protocol)
       }
     }
 
@@ -187,12 +188,12 @@ object Encoders extends LazyLogging{
       (systemFieldOpt, fieldsOpt) match {
         case (None, _) => throw InfotonParsingException("System object is missing")
         case (Some(sf), Some(f)) =>
-          val (path, md, dc, protocol) = processSystem(sf)
+          val (path, md, modifier, dc, protocol) = processSystem(sf)
           val fields = processFields(f)
-          ObjectInfoton(path, dc, None, md, fields, protocol = protocol)
+          ObjectInfoton(SF(path, md, modifier, dc, None, "", protocol), fields)
         case (Some(sf), None) =>
-          val (path, md, dc, protocol) = processSystem(sf)
-          ObjectInfoton(path, dc, None, md, None, "", protocol)
+          val (path, md, modifier, dc, protocol) = processSystem(sf)
+          ObjectInfoton(SF(path, md, modifier, dc, None, "", protocol), None)
       }
     }
 
@@ -205,23 +206,23 @@ object Encoders extends LazyLogging{
 
       (systemFieldOpt, fieldsOpt, fileContentsOpt) match {
         case (Some(sf), None, None) =>
-          val (path, md, dc, p) = processSystem(sf)
-          FileInfoton(path, dc, None, md, None, None, "", p)
+          val (path, md, modifier, dc, p) = processSystem(sf)
+          FileInfoton(SF(path, md, modifier, dc, None, "", p), None, None)
         case (None, _, _) => throw InfotonParsingException("System field is not present")
         case (Some(sf), Some(f), Some(fc)) =>
-          val (path, md, dc, p) = processSystem(sf)
+          val (path, md, modifier, dc, p) = processSystem(sf)
           val fields = processFields(f)
           val fileContent = processFileContent(fc)
-          FileInfoton(path, dc, None, md, fields, fileContent, p)
+          FileInfoton(SF(path, md, modifier, dc, None, "", p), fields, fileContent)
         case (Some(sf), None, Some(fc)) =>
-          val (path, md, dc, p) = processSystem(sf)
+          val (path, md, modifier, dc, p) = processSystem(sf)
           val fields = None
           val fileContent = processFileContent(fc)
-          FileInfoton(path, dc, None, md, None, Some(fileContent), "", p)
+          FileInfoton(SF(path, md, modifier, dc, None, "", p), None, Some(fileContent))
         case (Some(sf), Some(f), None) =>
-          val (path, md, dc, p) = processSystem(sf)
+          val (path, md, modifier, dc, p) = processSystem(sf)
           val fields = processFields(f)
-          FileInfoton(path, dc, None, md, Some(fields), None, "", p)
+          FileInfoton(SF(path, md, modifier, dc, None, "", p), Some(fields), None)
       }
     }
 
@@ -230,27 +231,28 @@ object Encoders extends LazyLogging{
       val fieldsOpt = (node \ "fields").asOpt[JsValue]
       val linkTo = (node \ "linkTo").asOpt[String]
       val linkType = (node \ "linkType").asOpt[Int]
+      val modifier = (node \ "lastModifiedBy").asOpt[String]
 
       (systemFieldOpt, fieldsOpt, linkTo, linkType) match {
         case (None, _, _, _) => throw InfotonParsingException("System field is not present")
         case (_, _, _, None) => throw InfotonParsingException("LinkTo field is not present")
         case (_, _, None, _) => throw InfotonParsingException("LinkType field is not present")
         case (Some(s), Some(f), Some(lTo), Some(lType)) =>
-          val (path, md, dc, p) = processSystem(s)
+          val (path, md, modBy, dc, p) = processSystem(s)
           val fields = processFields(f)
-          LinkInfoton(path, dc, md, fields, lTo, lType, p)
+          LinkInfoton(SF(path, md, modBy, dc, None, "", p), fields, lTo, lType)
         case (Some(s), None, Some(lTo), Some(lType)) =>
-          val (path, md, dc, p) = processSystem(s)
-          LinkInfoton(path = path, dc = dc, lastModified = md, linkTo = lTo, linkType = lType, protocol = p)
+          val (path, md, modBy, dc, p) = processSystem(s)
+          LinkInfoton(SF(path, md, modBy, dc, None, "", p), linkTo = lTo, linkType = lType)
       }
     }
 
     private def getSystem(infoton: Infoton): JsValue = {
       val structure = new FieldAggregator
 
-      structure += "path" -> Json.toJson(infoton.path)
+      structure += "path" -> Json.toJson(infoton.systemFields.path)
       structure += "lastModified" -> Json.toJson(
-        infoton.lastModified.toString(ISODateTimeFormat.dateTime().withZone(DateTimeZone.UTC))
+        infoton.systemFields.lastModified.toString(ISODateTimeFormat.dateTime().withZone(DateTimeZone.UTC))
       )
       structure += "parent" -> Json.toJson(infoton.parent)
       structure += "uuid" -> Json.toJson(infoton.uuid)

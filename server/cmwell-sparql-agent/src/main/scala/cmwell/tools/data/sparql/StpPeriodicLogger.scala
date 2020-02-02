@@ -60,7 +60,7 @@ class StpPeriodicLogger(infotonReporter: ActorRef, logFrequency: FiniteDuration)
         ingestStatsObj <- (infotonReporter ? RequestIngestStats).mapTo[ResponseIngestStats]
         ingestStatsOption = ingestStatsObj.stats
       } yield {
-        downloadStatsMap.stats.get(SparqlTriggeredProcessor.sparqlMaterializerLabel).foreach( materialized => {
+        downloadStatsMap.stats.get(SparqlTriggeredProcessor.sparqlMaterializerLabel).foreach(materialized => {
           ingestStatsOption.foreach(ingestStats => {
             logger.info(s" *** STP Agent ${materialized.label}" +
               s" *** Materialized ${materialized.receivedInfotons}, Ingested: ${ingestStats.ingestedInfotons}, Failed: ${ingestStats.failedInfotons}")

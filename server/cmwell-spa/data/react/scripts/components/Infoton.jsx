@@ -125,7 +125,7 @@ class Infoton extends React.Component {
         let dataFields = this.state.fields
         
         let makeLink = (url, className, children) => _(this.props.rootFolders).some(rf => url.indexOf(rf)>-1) ?
-                <Link to={url.replace('http:/','').replace('https:/','').replace('#','%23')} className={className}>{children || url}</Link> :
+                <Link to={url.replace('http:/','').replace('https:/','').replace('%','%25').replace('#','%23')} className={className}>{children || url}</Link> :
                 <a href={url} className={className} target="_blank">{children || url}</a>
         
         let renderFieldValue = fv => {

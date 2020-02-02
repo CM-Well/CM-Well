@@ -21,7 +21,7 @@ libraryDependencies ++= {
     dm("com.typesafe.akka", "akka-testkit") % "test",
     dm("com.typesafe.akka", "akka-stream-testkit") % "test",
     dm("commons-io", "commons-io"),
-    dm("io.netty", "netty"),
+//    dm("io.netty", "netty"),
 //    dm("nl.grons", "metrics4-scala"),
 //    dm("nl.grons", "metrics4-akka_a25"),
 //    dm("nl.grons", "metrics4-scala-hdr"),
@@ -59,5 +59,3 @@ libraryDependencies ++= {
 
 //we need tools.jar on classpath, since we use jps...
 unmanagedJars in Compile ~= (_ :+ Attributed.blank(file(System.getProperty("java.home").dropRight(3)+"lib/tools.jar")))
-
-fullTest := (test in Test).value

@@ -16,12 +16,14 @@
 
 package cmwell.it
 
+import java.util.concurrent.Executors
+
 import org.scalatest.{BeforeAndAfterAll, FunSpec, Matchers}
 import play.api.libs.json.Json
 import cmwell.util.http.{SimpleResponse, StringPath}
 import com.typesafe.scalalogging.LazyLogging
 
-import scala.concurrent.{Await, Future}
+import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.duration._
 import scala.io.Source
@@ -47,7 +49,7 @@ class SparqlTests extends FunSpec with Matchers with Helpers with BeforeAndAfter
 
   // todo generalize and move to Helpers
   def waitForData(path: StringPath, expectedDataLength: Int, maxRetries: Int = 32, sleepTime: FiniteDuration = 1.second) = {
-    import scala.concurrent.ExecutionContext.Implicits.global
+    implicit val ec = ExecutionContext.fromExecutor(Executors.newWorkStealingPool(10))
 
     var (length, retry) = (0, 0)
     do {

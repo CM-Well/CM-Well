@@ -21,8 +21,8 @@ import com.google.common.cache.LoadingCache
 import scala.annotation.tailrec
 import scala.concurrent._
 import scala.language.{higherKinds, postfixOps}
-import scala.collection.{mutable, GenTraversable, SeqLike, TraversableLike}
-import scala.collection.generic.{CanBuildFrom, GenericCompanion}
+import scala.collection.{BuildFrom, GenTraversable, SeqLike, mutable}
+import scala.collection.generic.CanBuildFrom
 import scala.collection.immutable.Set
 import scala.collection.mutable.{Set => MSet}
 import scala.reflect.ClassTag
@@ -47,13 +47,13 @@ package object collections {
   }
 
   def partition3[T, Coll[_]](xs: Coll[T])(f: T => Int)(
-    implicit ev: Coll[T] <:< TraversableLike[T, Coll[T]],
-    cbf: CanBuildFrom[Coll[T], T, Coll[T]]
+    implicit ev: Coll[T] <:< Iterable[T],
+    bf: BuildFrom[Coll[T], T, Coll[T]]
   ): (Coll[T], Coll[T], Coll[T]) = {
 
-    val b0 = cbf(xs)
-    val b1 = cbf(xs)
-    val b2 = cbf(xs)
+    val b0 = bf.newBuilder(xs)
+    val b1 = bf.newBuilder(xs)
+    val b2 = bf.newBuilder(xs)
 
     for (x <- xs) f(x) match {
       case 0 => b0 += x
@@ -63,17 +63,6 @@ package object collections {
     }
 
     (b0.result(), b1.result(), b2.result())
-  }
-
-  def mapFirst[A, B, Coll[_]](
-    xs: Coll[A]
-  )(f: A => Option[B])(implicit ev: Coll[A] <:< TraversableLike[A, Coll[A]]): Option[B] = {
-    var ob: Option[B] = None
-    xs.find { a =>
-      ob = f(a)
-      ob.isDefined
-    }
-    ob
   }
 
   def updatedMultiMap[K, V](m: Map[K, List[V]], k: K, v: V): Map[K, List[V]] =
@@ -109,15 +98,15 @@ package object collections {
     * @tparam Coll collection's type
     */
   def partitionWith[A, B, T, Coll[_]](xs: Coll[T])(f: T => Either[A, B])(
-    implicit ev: Coll[T] <:< TraversableLike[T, Coll[T]],
-    cbf1: CanBuildFrom[Coll[T], A, Coll[A]],
-    cbf2: CanBuildFrom[Coll[T], B, Coll[B]]
+    implicit ev: Coll[T] <:< IterableOnce[T],
+    bf1: BuildFrom[Coll[T], A, Coll[A]],
+    bf2: BuildFrom[Coll[T], B, Coll[B]]
   ): (Coll[A], Coll[B]) = {
 
-    val b1 = cbf1(xs)
-    val b2 = cbf2(xs)
+    val b1 = bf1(xs)
+    val b2 = bf2(xs)
 
-    for (x <- xs) f(x) match {
+    for (x <- xs.iterator) f(x) match {
       case Left(a)  => b1 += a
       case Right(b) => b2 += b
     }
@@ -137,13 +126,13 @@ package object collections {
     * @tparam Coll collection's type
     */
   def spanWith[A, B, Coll[_]](xs: Coll[A])(f: A => Option[B])(
-    implicit ev: Coll[A] <:< TraversableLike[A, Coll[A]],
-    cbf1: CanBuildFrom[Coll[A], B, Coll[B]],
-    cbf2: CanBuildFrom[Coll[A], A, Coll[A]]
+    implicit ev: Coll[A] <:< Iterable[A],
+    bf1: BuildFrom[Coll[A], B, Coll[B]],
+    bf2: BuildFrom[Coll[A], A, Coll[A]]
   ): (Coll[B], Coll[A]) = {
 
-    val b1 = cbf1(xs)
-    val b2 = cbf2(xs)
+    val b1 = bf1(xs)
+    val b2 = bf2(xs)
 
     var stayOnLeft = true
     xs.foreach { x =>
@@ -170,10 +159,10 @@ package object collections {
     * @tparam R distinct by type
     * @tparam Coll type of the collection
     */
-  def distinctBy[T, R, Coll[_]](xs: Coll[T])(f: T => R)(implicit ev: Coll[T] <:< TraversableLike[T, Coll[T]],
-                                                        cbf: CanBuildFrom[Coll[T], T, Coll[T]]): Coll[T] = {
+  def distinctBy[T, R, Coll[_]](xs: Coll[T])(f: T => R)(implicit ev: Coll[T] <:< Iterable[T],
+                                                        bf: BuildFrom[Coll[T], T, Coll[T]]): Coll[T] = {
 
-    val builder = cbf(xs)
+    val builder = bf(xs)
     builder.sizeHint(xs.size)
     val seen = MSet.empty[R]
 
@@ -183,41 +172,6 @@ package object collections {
         seen.add(f(elem))
       }
     }
-    builder.result()
-  }
-
-  /**
-    * reverse flatten. result collection type is of the inner collection.
-    * e.g:
-    *
-    * {{{
-    * scala> import cmwell.util.collections._
-    * import cmwell.util.collections._
-    *
-    * scala> val nested = List(Set(1,2),Set(2,3))
-    * nested: List[scala.collection.immutable.Set[Int]] = List(Set(1, 2), Set(2, 3))
-    *
-    * scala> nested.flatten
-    * res0: List[Int] = List(1, 2, 2, 3)
-    *
-    * scala> innerFlat(nested)
-    * res1: scala.collection.immutable.Set[Int] = Set(1, 2, 3)
-    * }}}
-    *
-    * @param xs input
-    * @tparam T elements type
-    * @tparam Inner inner collection type
-    * @tparam Outer outer collection type
-    */
-  def innerFlat[T, Inner, Outer[_]](xs: Outer[Inner])(implicit ev0: Inner <:< TraversableLike[T, Inner],
-                                                      ev1: Outer[Inner] <:< TraversableLike[Inner, Outer[Inner]],
-                                                      cbf: CanBuildFrom[Inner, T, Inner]): Inner = {
-
-    val size: Int = (0 /: xs)((ac, in) => ac + in.size)
-    val builder = cbf()
-    builder.sizeHint(size)
-
-    xs.foreach(builder ++= _)
     builder.result()
   }
 
@@ -246,8 +200,8 @@ package object collections {
     b.result()
   }
 
-  def randomFrom[Elem, Coll](xs: Coll)(implicit ev: Coll <:< TraversableLike[Elem, Coll]): Elem = {
-    xs.toIterator
+  def randomFrom[Elem, Coll](xs: Coll)(implicit ev: Coll <:< Iterable[Elem]): Elem = {
+    xs.iterator
       .drop(scala.util.Random.nextInt(xs.size))
       .next()
   }
@@ -301,7 +255,8 @@ package object collections {
       else {
         val hasNext = wrapUnsafeAndConvertToIOException(it.hasNext)
         if (hasNext) {
-          wrapUnsafeAndConvertToIOException(arr = converter.asBytes(it.next()))
+          arr = converter.asBytes(it.next())
+          wrapUnsafeAndConvertToIOException(arr)
           read()
         } else -1
       }
@@ -313,10 +268,10 @@ package object collections {
     * e.g:
     *
     * {{{
-    * scala> import cmwell.util.collections._
-    * import cmwell.util.collections._
+    * scala> import cmwell.util.collections.Unfolder._
+    * import cmwell.util.collections.Unfolder._
     *
-    * scala> cmwell.util.collections.Unfolder.unfold(Array.newBuilder[Int])(0 → 1){
+    * scala> unfold(Array.newBuilder[Int])(0 → 1){
     *      |   case (a,b) if a > 1000 ⇒ None
     *      |   case (a,b) ⇒ Some((b→(a+b))→a)
     *      | }
@@ -335,135 +290,6 @@ package object collections {
         s = f(state)
       }
       b.result()
-    }
-  }
-
-  /**
-    * generic implicit unfolder for any collection that has a `GenericCompanion`,
-    * e.g: `Set`,`Vector`,`List`,`Traversable`,etc'...
-    * can be used with the companion object like:
-    *
-    * {{{
-    * scala> import cmwell.util.collections._
-    * import cmwell.util.collections._
-    *
-    * scala> Set.unfold(0 → 1){
-    *      |   case (a,b) if a > 1000 ⇒ None
-    *      |   case (a,b) ⇒ Some((b→(a+b))→a)
-    *      | }
-    * res0: scala.collection.immutable.Set[Int] = Set(0, 5, 89, 1, 233, 21, 610, 13, 2, 34, 144, 377, 3, 55, 8, 987)
-    *
-    * scala> Traversable.unfold(1){ i ⇒
-    *      |   if(i > 10) None
-    *      |   else Some((i+1,i*i))
-    *      | }
-    * res1: Traversable[Int] = List(1, 4, 9, 16, 25, 36, 49, 64, 81, 100)
-    * }}}
-    */
-  implicit class Unfolder[CC[X] <: GenTraversable[X]](obj: GenericCompanion[CC]) {
-    def unfold[S, E](z: S)(f: S => Option[(S, E)]): CC[E] =
-      Unfolder.unfold(obj.newBuilder[E])(z)(f)
-  }
-
-  /**
-    * `Array` does not have a `GenericCompanion`, so it has a special implementation.
-    *
-    * {{{
-    * scala> import cmwell.util.collections._
-    * import cmwell.util.collections._
-    *
-    * scala> Array .unfold(1){ i ⇒
-    *      |   if(i > 10) None
-    *      |   else Some((i+1,i*i))
-    *      | }
-    * res0: Array[Int] = Array(1, 4, 9, 16, 25, 36, 49, 64, 81, 100)
-    * }}}
-    */
-  implicit class ArrayUnfolder(arrObj: Array.type) {
-    def unfold[S, E: ClassTag](z: S)(f: S => Option[(S, E)]): Array[E] =
-      Unfolder.unfold(Array.newBuilder[E])(z)(f)
-  }
-
-  /**
-    * `Map` is generic with 2 types: `K` and `V`, so it also gets to have it's own implementation.
-    *
-    * {{{
-    * scala> import cmwell.util.collections._
-    * import cmwell.util.collections._
-    *
-    * scala> Map.unfold(1){ i ⇒
-    *      |   if(i > 10) None
-    *      |   else Some((i+1,(i,i*i)))
-    *      | }
-    * res0: Map[Int,Int] = Map(5 -> 25, 10 -> 100, 1 -> 1, 6 -> 36, 9 -> 81, 2 -> 4, 7 -> 49, 3 -> 9, 8 -> 64, 4 -> 16)
-    * }}}
-    */
-  implicit class MapUnfolder(mapObj: Map.type) {
-    def unfold[S, K, V](z: S)(f: S => Option[(S, (K, V))]): Map[K, V] = {
-      val b = Map.newBuilder[K, V]
-      var s = f(z)
-      while (s.isDefined) {
-        val Some((state, element)) = s
-        b += element
-        s = f(state)
-      }
-      b.result()
-    }
-  }
-
-  /**
-    * `Stream` gets it's own implementation, because although it inherits from `GenericCompanion`,
-    * it is more appropriate to preserve it's lazy nature, and not compute the entire stream eagerly.
-    * this allows for potentially infinite sequences:
-    *
-    * {{{
-    * scala> import cmwell.util.collections._
-    * import cmwell.util.collections._
-    *
-    * scala> val s = Stream.unfold(1){ i => Some((i << 1, i.toString))}
-    * s: Stream[String] = Stream(1, ?)
-    *
-    * scala> s(10)
-    * res0: String = 1024
-    *
-    * scala> s
-    * res1: Stream[String] = Stream(1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, ?)
-    * }}}
-    */
-  implicit class StreamUnfolder(strObj: scala.collection.immutable.Stream.type) {
-    def unfold[S, E](z: S)(f: S => Option[(S, E)]): Stream[E] = {
-      f(z).fold(Stream.empty[E]) {
-        case (s, e) => e #:: unfold(s)(f)
-      }
-    }
-  }
-
-  /**
-    * `Iterator` gets it's own implementation, because:
-    * 1). it doesn't inherit from `GenericCompanion`.
-    * 2). it should only unfold itself upon `next()` calls.
-    * this allows for potentially infinite sequences:
-    *
-    * {{{
-    * scala> import cmwell.util.collections._
-    * import cmwell.util.collections._
-    *
-    * scala> val i = Iterator.unfold(1){ i => Some((i << 1, i.toString))}
-    * i: Iterator[String] = non-empty iterator
-    *
-    * scala> i.take(10).toList
-    * res0: List[String] = List(1, 2, 4, 8, 16, 32, 64, 128, 256, 512)
-    * }}}
-    */
-  implicit class IteratorUnfolder(itrObj: scala.collection.Iterator.type) {
-    def unfold[S, E](z: S)(f: S => Option[(S, E)]): Iterator[E] = new Iterator[E] {
-      private[this] var nxt = f(z)
-      override def hasNext: Boolean = nxt.isDefined
-      override def next(): E = {
-        val (s, e) = nxt.get
-        nxt = f(s)
-        e
-      }
     }
   }
 

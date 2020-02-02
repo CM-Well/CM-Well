@@ -88,8 +88,6 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
       fetchEntireMetaNsAsPredicates
     )
 
-  private val fieldsSetBreakout = scala.collection.breakOut[Seq[Option[String]],String,Set[String]]
-
   private def fetchEntireMetaNsAsPredicates = {
     val chunkSize = 512
     def fetchFields(offset: Int = 0): Future[Seq[Infoton]] = {
@@ -103,23 +101,24 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
     }
 
     fetchFields().map { f =>
-      val (fieldsInfotons,namespacesInfotons) = f.partition(_.path.count('/'.==)>3)
+      val (fieldsInfotons,namespacesInfotons) = f.partition(_.systemFields.path.count('/'.==)>3)
       val prefixToUrl = (for {
         i <- namespacesInfotons
         f <- i.fields
         u <- f.get("url")
         v <- u.collect{case FString(w,_,_) => w}.headOption
-      } yield i.name -> v).toMap
+      } yield i.systemFields.name -> v).toMap
 
       val fieldsSet = fieldsInfotons
         .map { infoton =>
-        val lastTwoPathParts = infoton.path.split('/').reverseIterator.take(2).toArray.reverse
+        val lastTwoPathParts = infoton.systemFields.path.split('/').reverseIterator.take(2).toArray.reverse
         val (prefix,localName) = lastTwoPathParts(0) -> lastTwoPathParts(1)
         prefixToUrl.get(prefix).map(_ + localName)
         }
+        .view
         .collect {
         case Some(x) => x
-      }(fieldsSetBreakout)
+      }.to(Set)
       fieldsSet
     }
   }
@@ -158,16 +157,19 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
                 if (searchResponse.infotons.nonEmpty) {
                   Some(
                     Everything(
-                      CompoundInfoton(i.path,
-                                      i.dc,
-                                      i.indexTime,
-                                      i.lastModified,
+                      CompoundInfoton(SystemFields(
+                                        i.systemFields.path,
+                                        i.systemFields.lastModified,
+                                        i.systemFields.lastModifiedBy,
+                                        i.systemFields.dc,
+                                        i.systemFields.indexTime,
+                                        "",
+                                        "http"),
                                       i.fields,
                                       searchResponse.infotons,
                                       searchResponse.offset,
                                       searchResponse.length,
-                                      searchResponse.total,
-                                      protocol = None)
+                                      searchResponse.total)
                     )
                   )
                 } else Some(Everything(i))
@@ -272,26 +274,26 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
       Future.failed(new IllegalArgumentException("too many fields"))
     } else {
       val payloadForIndirectLargeInfoton: Future[(Array[Byte],Array[Byte])] = infoton match {
-        case i @ FileInfoton(_, _, _, _, _, Some(FileContent(Some(data), _, _, _)), _, _)
+        case i @ FileInfoton(_, _, Some(FileContent(Some(data), _, _, _)))
             if data.length >= thresholdToUseZStore => {
-          val fi = i.withoutData
-          zStore.put(fi.content.flatMap(_.dataPointer).get, data).map { _ =>
-            val withPossibleEpoch = CommandSerializer.encode(WriteCommand(fi))
-            if (i.lastModified.getMillis == 0L)
-              withPossibleEpoch -> CommandSerializer.encode(WriteCommand(fi.copy(lastModified = new DateTime())))
-            else withPossibleEpoch -> withPossibleEpoch
-          }
-        }
+              val fi = i.withoutData
+              zStore.put(fi.content.flatMap(_.dataPointer).get, data).map { _ =>
+                val withPossibleEpoch = CommandSerializer.encode(WriteCommand(fi))
+                if (i.systemFields.lastModified.getMillis == 0L)
+                  withPossibleEpoch -> CommandSerializer.encode(WriteCommand(fi.copy(fi.systemFields.copy(lastModified = new DateTime()))))
+                else withPossibleEpoch -> withPossibleEpoch
+              }
+            }
         case i => {
           val t =
-            if (i.lastModified.getMillis == 0L)
-              payload -> CommandSerializer.encode(WriteCommand(i.copyInfoton(lastModified = new DateTime())))
+            if (i.systemFields.lastModified.getMillis == 0L)
+              payload -> CommandSerializer.encode(WriteCommand(i.copyInfoton(i.systemFields.copy(lastModified = new DateTime()))))
             else payload -> payload
           Future.successful(t)
         }
       }
       payloadForIndirectLargeInfoton.flatMap { payload =>
-        sendToKafka(infoton.path, payload._2, isPriorityWrite).map(_ => true)
+        sendToKafka(infoton.systemFields.path, payload._2, isPriorityWrite).map(_ => true)
       }
     }
   }
@@ -311,7 +313,7 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
       infotons.forall(_.kind != "DeletedInfoton"),
       s"Writing a DeletedInfoton does not make sense. use proper delete API instead. malformed paths: ${infotons
         .collect {
-          case DeletedInfoton(path, _, _, _, _) => path
+          case DeletedInfoton(systemFields) => systemFields.path
   }
         .mkString("[", ",", "]")}"
     )
@@ -319,15 +321,15 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
     def kafkaWritesRes(infos: Vector[Infoton], isPriorityWriteInner: Boolean): Future[Unit] = {
       Future
         .traverse(infos) {
-        case infoton if infoton.lastModified.getMillis == 0L =>
+        case infoton if infoton.systemFields.lastModified.getMillis == 0L =>
           sendToKafka(
-              WriteCommand(infoton.copyInfoton(lastModified = DateTime.now(DateTimeZone.UTC)),
-              validTid(infoton.path,tid),
-                           prevUUID = atomicUpdates.get(infoton.path)),
+              WriteCommand(infoton.copyInfoton(infoton.systemFields.copy(lastModified = DateTime.now(DateTimeZone.UTC))),
+              validTid(infoton.systemFields.path,tid),
+                           prevUUID = atomicUpdates.get(infoton.systemFields.path)),
               isPriorityWriteInner
             )
           case infoton =>
-            sendToKafka(WriteCommand(infoton, validTid(infoton.path, tid), atomicUpdates.get(infoton.path)),
+            sendToKafka(WriteCommand(infoton, validTid(infoton.systemFields.path, tid), atomicUpdates.get(infoton.systemFields.path)),
                         isPriorityWriteInner)
         }
         .map(_ => ())
@@ -337,7 +339,7 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
     // in distributed env it's only an optimization), that when infotons are read,
     // the meta data to format & search by already exist.
     // So if you read infoton right after an ingest, prefixes will come out properly.
-    val (meta, regs) = infotons.partition(_.path.matches("/meta/n(n|s)/.+"))
+    val (meta, regs) = infotons.partition(_.systemFields.path.matches("/meta/n(n|s)/.+"))
 
     val metaWrites = {
       if (meta.isEmpty) Future.successful(())
@@ -353,25 +355,26 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
       }
   }
 
-  def deleteInfotons(deletes: List[(String, Option[String], Option[Map[String, Set[FieldValue]]])],
+  def deleteInfotons(deletes: List[(String, Option[Map[String, Set[FieldValue]]])],
+                     modifier: String,
                      tidOpt: Option[String] = None,
                      atomicUpdates: Map[String, String] = Map.empty,
                      isPriorityWrite: Boolean = false) = {
     val dt = new DateTime()
     val commands: List[SingleCommand] = deletes.map {
-      case (path, protocol, Some(fields)) =>
-        DeleteAttributesCommand(path, fields, dt, validTid(path, tidOpt), atomicUpdates.get(path), protocol)
-      case (path, _, None) => DeletePathCommand(path, dt, validTid(path, tidOpt), atomicUpdates.get(path))
+      case (path, Some(fields)) =>
+        DeleteAttributesCommand(path, fields, dt, modifier, validTid(path, tidOpt), atomicUpdates.get(path))
+      case (path, None) => DeletePathCommand(path, dt, modifier, validTid(path, tidOpt), atomicUpdates.get(path))
     }
 
     Future.traverse(commands)(sendToKafka(_,isPriorityWrite)).map(_ => true)
   }
 
-  def deleteInfoton(path: String, protocol: Option[String], data: Option[Map[String, Set[FieldValue]]], isPriorityWrite: Boolean = false) = {
+  def deleteInfoton(path: String, modifier: String, data: Option[Map[String, Set[FieldValue]]], isPriorityWrite: Boolean = false) = {
 
     val delCommand = data match {
-      case None => DeletePathCommand(path, new DateTime())
-      case Some(fields) => DeleteAttributesCommand(path, fields, new DateTime(), protocol = protocol)
+      case None => DeletePathCommand(path, new DateTime(), modifier)
+      case Some(fields) => DeleteAttributesCommand(path, fields, new DateTime(), modifier)
     }
 
     val payload = CommandSerializer.encode(delCommand)
@@ -386,6 +389,7 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
    */
   def upsertInfotons(inserts: List[Infoton],
                      deletes: Map[String, Map[String, Option[Set[FieldValue]]]],
+                     deletesModifier: String,
                      tid: Option[String] = None,
                      atomicUpdates: Map[String, String] = Map.empty,
                      isPriorityWrite: Boolean = false): Future[Boolean] = {
@@ -393,13 +397,13 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
       inserts.forall(_.kind != "DeletedInfoton"),
       s"Writing a DeletedInfoton does not make sense. use proper delete API instead. malformed paths: ${inserts
         .collect {
-          case DeletedInfoton(path, _, _, _, _) => path
+          case DeletedInfoton(systemFields) => systemFields.path
         }
         .mkString("[", ",", "]")}"
     )
     //require(!inserts.isEmpty,"if you only have DELETEs, use delete. not upsert!")
     require(
-      inserts.forall(i => deletes.keySet(i.path)),
+      inserts.forall(i => deletes.keySet(i.systemFields.path)),
       "you can't use upsert for entirely new infotons! split your request into upsertInfotons and putInfotons!\n" +
         s"deletes: ${deletes}\ninserts: ${inserts}"
     )
@@ -411,7 +415,7 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
     else {
       val dt = new DateTime()
       val (mixedDeletes, pureDeletes): Tuple2[FMap, FMap] = deletes.partition {
-        case (k, _) => inserts.exists(_.path == k)
+        case (k, _) => inserts.exists(_.systemFields.path == k)
       }
       val dels = pureDeletes.map {
         case (path, fieldSet) => {
@@ -419,13 +423,13 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
             case (f, None) => f -> eSet
             case (f, Some(s)) => f -> s
           }
-          UpdatePathCommand(path, m, eMap, dt, validTid(path,tid), atomicUpdates.get(path))
+          UpdatePathCommand(path, m, eMap, dt, deletesModifier, validTid(path,tid), atomicUpdates.get(path), "http")
         }
       }.toList
 
       val ups = inserts.map { i =>
         {
-          val del = mixedDeletes(i.path).map {
+          val del = mixedDeletes(i.systemFields.path).map {
             case (f, None) => f -> eSet
             case (f, Some(s)) => f -> s
           }
@@ -433,7 +437,8 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
             case Some(fields) => fields
             case None => eMap //TODO: should we block this option? regular DELETE could have been used instead...
           }
-          UpdatePathCommand(i.path, del, ins, i.lastModified, validTid(i.path, tid), atomicUpdates.get(i.path), i.protocol)
+          UpdatePathCommand(i.systemFields.path, del, ins, i.systemFields.lastModified, i.systemFields.lastModifiedBy, validTid(i.systemFields.path, tid),
+            atomicUpdates.get(i.systemFields.path), i.systemFields.protocol)
         }
       }
 
@@ -454,9 +459,10 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
           if (regs.isEmpty) Future.successful(())
           else
             Future.traverse(regs) {
-              case cmd @ UpdatePathCommand(_, _, _, lastModified, _, _, _) if lastModified.getMillis == 0L =>
+              case cmd @ UpdatePathCommand(_, _, _, lastModified, _, _, _, _) if lastModified.getMillis == 0L =>
                 sendToKafka(cmd.copy(lastModified = DateTime.now(DateTimeZone.UTC)), isPriorityWrite)
-          case cmd => sendToKafka(cmd, isPriorityWrite)
+          case cmd =>
+              sendToKafka(cmd, isPriorityWrite)
             }
         }
         .map { _ =>
@@ -531,8 +537,6 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
                          debugInfo = debugInfo)
   }
 
-  val thinSearchResultsBreakout =
-    scala.collection.breakOut[Seq[FTSThinInfoton], SearchThinResult, Vector[SearchThinResult]]
   def thinSearch(
     pathFilter: Option[PathFilter] = None,
                  fieldFilters: Option[FieldFilter] = None,
@@ -561,9 +565,9 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
         ftr.total,
         ftr.offset,
         ftr.length,
-        ftr.thinInfotons.map { ti =>
-        SearchThinResult(ti.path, ti.uuid, ti.lastModified, ti.indexTime, ti.score)
-        }(thinSearchResultsBreakout),
+        ftr.thinInfotons.view.map { ti =>
+        SearchThinResult(ti.path, ti.uuid, ti.lastModified, ti.lastModifiedBy ,ti.indexTime, ti.score)
+        }.to(Vector),
         debugInfo = ftr.searchQueryStr
       )
     }
@@ -655,9 +659,9 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
     }
     def ftsResults2Dates(ftsResults: FTSSearchResponse): (Option[DateTime], Option[DateTime]) = {
       if (ftsResults.length > 0) {
-        val to = ftsResults.infotons.maxBy(_.lastModified.getMillis)
-        val from = ftsResults.infotons.minBy(_.lastModified.getMillis)
-        Some(from.lastModified) -> Some(to.lastModified)
+        val to = ftsResults.infotons.maxBy(_.systemFields.lastModified.getMillis)
+        val from = ftsResults.infotons.minBy(_.systemFields.lastModified.getMillis)
+        Some(from.systemFields.lastModified) -> Some(to.systemFields.lastModified)
       } else (None, None)
     }
 
@@ -676,11 +680,8 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
         }.toVector, level) */ .map { infotonsSeq =>
           if(infotonsSeq.exists(_._1.isEmpty)) {
               val esUuidsSet: Set[String] =
-                ftsResults.infotons.map(_.uuid)(scala.collection.breakOut[Seq[Infoton], String, Set[String]])
-              val casUuidsSet: Set[String] = infotonsSeq.collect { case (FullBox(i), _) => i.uuid }(
-                scala.collection
-                  .breakOut[Vector[(Box[Infoton], Option[Map[String, Set[FieldValue]]])], String, Set[String]]
-              )
+                ftsResults.infotons.view.map(_.uuid).to(Set)
+              val casUuidsSet: Set[String] = infotonsSeq.view.collect { case (FullBox(i), _) => i.uuid }.to(Set)
               logger.error(
                 "some uuids retrieved from ES, could not be retrieved from cassandra: " + esUuidsSet
                   .diff(casUuidsSet)
@@ -718,35 +719,44 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
   //FIXME: extra should not contain same keys as fields (all keys should start with '$'), so another ugly hack...
   private def addExtras(infoton: Infoton, extra: Option[Map[String,Set[FieldValue]]]): Infoton = infoton match {
     case i: ObjectInfoton =>
-      new ObjectInfoton(i.path,
-                        i.dc,
-                        i.indexTime,
-                        i.lastModified,
-                        i.fields.fold(extra)(f => extra.fold(i.fields)(e => Some(f ++ e))),
-                        protocol = i.protocol) {
+      new ObjectInfoton(SystemFields(
+                          i.systemFields.path,
+                          i.systemFields.lastModified,
+                          i.systemFields.lastModifiedBy,
+                          i.systemFields.dc,
+                          i.systemFields.indexTime,
+                          "",
+                          i.systemFields.protocol),
+                        i.fields.fold(extra)(f => extra.fold(i.fields)(e => Some(f ++ e)))) {
       override def uuid = i.uuid
       override def kind = i.kind
     }
     case i: FileInfoton =>
-      new FileInfoton(i.path,
-                      i.dc,
-                      i.indexTime,
-                      i.lastModified,
+      new FileInfoton(SystemFields(
+                        i.systemFields.path,
+                        i.systemFields.lastModified,
+                        i.systemFields.lastModifiedBy,
+                        i.systemFields.dc,
+                        i.systemFields.indexTime,
+                        "",
+                        i.systemFields.protocol),
                       i.fields.fold(extra)(f => extra.fold(i.fields)(e => Some(f ++ e))),
-                      i.content,
-                      protocol = i.protocol) {
+                      i.content) {
       override def uuid = i.uuid
       override def kind = i.kind
     }
     case i: LinkInfoton =>
-      new LinkInfoton(i.path,
-                      i.dc,
-                      i.indexTime,
-                      i.lastModified,
+      new LinkInfoton(SystemFields(
+                        i.systemFields.path,
+                        i.systemFields.lastModified,
+                        i.systemFields.lastModifiedBy,
+                        i.systemFields.dc,
+                        i.systemFields.indexTime,
+                        "",
+                        i.systemFields.protocol),
                       i.fields.fold(extra)(f => extra.fold(i.fields)(e => Some(f ++ e))),
                       i.linkTo,
-                      i.linkType,
-                      protocol = i.protocol) {
+                      i.linkType) {
       override def uuid = i.uuid
       override def kind = i.kind
     }
@@ -754,19 +764,19 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
   }
 
   private def addIndexTime(fromCassandra: Seq[Infoton], fromES: Seq[Infoton]): Seq[Infoton] = {
-    val m = fromES.collect { case i if i.indexTime.isDefined => i.uuid -> i.indexTime.get }.toMap
+    val m = fromES.collect { case i if i.systemFields.indexTime.isDefined => i.uuid -> i.systemFields.indexTime.get }.toMap
     fromCassandra.map {
-      case i: ObjectInfoton if m.isDefinedAt(i.uuid) && i.indexTime.isEmpty => i.copy(indexTime = m.get(i.uuid))
-      case i: FileInfoton if m.isDefinedAt(i.uuid) && i.indexTime.isEmpty => i.copy(indexTime = m.get(i.uuid))
-      case i: LinkInfoton if m.isDefinedAt(i.uuid) && i.indexTime.isEmpty => i.copy(indexTime = m.get(i.uuid))
-      case i: DeletedInfoton if m.isDefinedAt(i.uuid) && i.indexTime.isEmpty => i.copy(indexTime = m.get(i.uuid))
+      case i: ObjectInfoton if m.isDefinedAt(i.uuid) && i.systemFields.indexTime.isEmpty => i.copy(i.systemFields.copy(indexTime = m.get(i.uuid)))
+      case i: FileInfoton if m.isDefinedAt(i.uuid) && i.systemFields.indexTime.isEmpty => i.copy(i.systemFields.copy(indexTime = m.get(i.uuid)))
+      case i: LinkInfoton if m.isDefinedAt(i.uuid) && i.systemFields.indexTime.isEmpty => i.copy(i.systemFields.copy(indexTime = m.get(i.uuid)))
+      case i: DeletedInfoton if m.isDefinedAt(i.uuid) && i.systemFields.indexTime.isEmpty => i.copy(i.systemFields.copy(indexTime = m.get(i.uuid)))
       case i => i
     }
   }
 
   def getListOfDC: Future[Seq[String]] = {
     ftsService.listChildren("/meta/sys/dc",0,20).map { sr =>
-      Settings.dataCenter +: sr.infotons.map(_.path.drop("/meta/sys/dc/".length))
+      Settings.dataCenter +: sr.infotons.map(_.systemFields.path.drop("/meta/sys/dc/".length))
     }
   }
 
@@ -779,7 +789,8 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
       val fieldsWithFilter =
         fieldFilters.fold(fields)(ff => fields + ("qp" -> Set[FieldValue](FString(Encoder.encodeFieldFilter(ff)))))
       val fieldsWithFilterAndWh = fieldsWithFilter + ("with-history" -> Set[FieldValue](FBoolean(withHistory)))
-      VirtualInfoton(ObjectInfoton(s"/proc/dc/$dc", Settings.dataCenter, None, fieldsWithFilterAndWh, protocol = None))
+      VirtualInfoton(ObjectInfoton(SystemFields(s"/proc/dc/$dc", new DateTime(DateTimeZone.UTC), "VirtualInfoton", Settings.dataCenter,
+        None, "", "http"), fieldsWithFilterAndWh))
     }
 
     ftsService
@@ -793,7 +804,8 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
     fields.flatMap { f =>
       val predicates = metaNsCache.getAndUpdateIfNeeded.map(toFieldValues)
       predicates.map { p =>
-        VirtualInfoton(ObjectInfoton(s"/proc/fields", Settings.dataCenter, None, Map("fields" -> f, "predicates" -> p), protocol = None))
+        VirtualInfoton(ObjectInfoton(SystemFields(s"/proc/fields", new DateTime(DateTimeZone.UTC), "VirtualInfoton", Settings.dataCenter, None, "", "http"),
+          Map("fields" -> f, "predicates" -> p)))
       }
     }
   }
@@ -807,8 +819,12 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
                   scrollTTL: Long,
                   withHistory: Boolean = false,
                   withDeleted: Boolean = false,
-                  debugInfo: Boolean = false): Future[IterationResults] = {
-    ftsService
+                  debugInfo: Boolean = false,
+                  withData: Boolean = false): Future[IterationResults] = {
+    logger.info("Creating iterator in ES (first get-chunk request) with: "+
+      s"pathFilter=$pathFilter fieldsFilters=$fieldsFilters datesFilter=$datesFilter paginationParams=$paginationParams" +
+      s"scrollTTL=$scrollTTL withHistory=$withHistory withDeleted=$withDeleted debugInfo=$debugInfo withData=$withData" )
+    val searchResultFuture = ftsService
       .startScroll(pathFilter,
         fieldsFilters,
         datesFilter,
@@ -817,10 +833,21 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
         withHistory,
         withDeleted,
         debugInfo = debugInfo)
-      .map { ftsResults =>
-        val response = ftsResults.response
-        IterationResults(response.scrollId, response.total, Some(response.infotons), debugInfo = ftsResults.searchQueryStr)
-      }
+
+    val results = withData match {
+      case false =>
+        searchResultFuture.map { ftsResults =>
+          val response = ftsResults.response
+          IterationResults(response.scrollId, response.total, Some(response.infotons), debugInfo = ftsResults.searchQueryStr)
+        }
+      case true =>
+        searchResultFuture.flatMap { ftsResults =>
+          val infotons = enrichInfotonsData(ftsResults.response.infotons)
+          val response = ftsResults.response
+          infotons.map{infotonSeq => IterationResults(response.scrollId, response.total, Some(infotonSeq), debugInfo = ftsResults.searchQueryStr)}
+        }
+    }
+    results
   }
 
   def startSuperScroll(pathFilter: Option[PathFilter] = None,
@@ -869,6 +896,7 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
   }
 
   def scroll(scrollId: String, scrollTTL: Long, withData: Boolean, debugInfo:Boolean): Future[IterationResults] = {
+    logger.debug(s"Getting next chunk request received with: scrollId=$scrollId scrollTTL=$scrollTTL withData=$withData debugInfo=$debugInfo")
     val searchResultFuture = ftsService.scroll(scrollId, scrollTTL, debugInfo = debugInfo)
     val results = withData match {
       case false =>
@@ -877,29 +905,32 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
       }
       case true =>
         searchResultFuture.flatMap { ftsResults =>
-          irwService
-            .readUUIDSAsync(ftsResults.infotons.map {
-          _.uuid
-            }.toVector, level)
-            .map { infotonsSeq =>
-          if(infotonsSeq.exists(_.isEmpty)) {
-                val esUuidsSet: Set[String] =
-                  ftsResults.infotons.map(_.uuid)(scala.collection.breakOut[Seq[Infoton], String, Set[String]])
-                val casUuidsSet: Set[String] = infotonsSeq.collect { case FullBox(i) => i.uuid }(
-                  scala.collection.breakOut[Seq[Box[Infoton]], String, Set[String]]
-                )
-                logger.error(
-                  "some uuids retrieved from ES, could not be retrieved from cassandra: " + esUuidsSet
-                    .diff(casUuidsSet)
-                    .mkString("[", ",", "]")
-                )
-          }
-          val infotons = addIndexTime(infotonsSeq.collect{case FullBox(i) => i}, ftsResults.infotons)
-          IterationResults(ftsResults.scrollId, ftsResults.total, Some(infotons), debugInfo = ftsResults.searchQueryStr)
+          val infotons = enrichInfotonsData(ftsResults.infotons)
+          infotons.map{infotonSeq => IterationResults(ftsResults.scrollId, ftsResults.total, Some(infotonSeq), debugInfo = ftsResults.searchQueryStr)}
         }
       }
-    }
     results
+  }
+
+  def enrichInfotonsData (infotons: Seq[Infoton]): Future[Seq[Infoton]] = {
+    irwService
+      .readUUIDSAsync(infotons.map {
+        _.uuid
+      }.toVector, level)
+      .map { infotonsSeq =>
+        if(infotonsSeq.exists(_.isEmpty)) {
+          val esUuidsSet: Set[String] =
+            infotons.view.map(_.uuid).to(Set)
+          val casUuidsSet: Set[String] = infotonsSeq.view.collect { case FullBox(i) => i.uuid }.to(Set)
+          logger.error(
+            "some uuids retrieved from ES, could not be retrieved from cassandra: " + esUuidsSet
+              .diff(casUuidsSet)
+              .mkString("[", ",", "]")
+          )
+        }
+        addIndexTime(infotonsSeq.collect{case FullBox(i) => i}, infotons)
+      }
+
   }
 
   def verify(path: String, limit: Int): Future[Boolean] = proxyOps.verify(path, limit)
@@ -924,7 +955,7 @@ class CRUDServiceFS @Inject()(implicit ec: ExecutionContext, sys: ActorSystem) e
   // assuming not the only version of the infoton!
   def purgeUuid(infoton: Infoton): Future[Unit] = {
     irwService.purgeHistorical(infoton, isOnlyVersion = false, QUORUM).flatMap { _ =>
-        ftsService.purge(infoton.uuid).map(_ => Unit)
+        ftsService.purge(infoton.uuid).map(_ => ())
     }
   }
 

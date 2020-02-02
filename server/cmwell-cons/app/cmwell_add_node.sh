@@ -31,5 +31,4 @@ do
 done
 
 source ./cmw.env
-scala -nc -cp 'cons-lib/*' -I cmw.conf -e "cmw.addNodes(\"$map_file\"); sys.exit(0)" 2>&1 | bash -c 'tee out.log'
-
+scala -cp 'cons-lib/*' -I cmw.conf -e "cmw.addNodes(\"$map_file\"); sys.exit(0)" 2>&1 | bash -c 'tee out.log'

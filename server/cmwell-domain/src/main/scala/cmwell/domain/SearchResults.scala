@@ -27,6 +27,7 @@ import scala.collection.immutable
 case class SearchThinResult(path: String,
                             uuid: String,
                             lastModified: String,
+                            lastModifiedBy: String,
                             indexTime: Long,
                             score: Option[Float] = None)
     extends Formattable

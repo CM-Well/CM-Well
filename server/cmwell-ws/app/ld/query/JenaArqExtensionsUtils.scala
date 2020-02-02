@@ -81,7 +81,7 @@ object JenaArqExtensionsUtils {
     }
   }
 
-  def squashBySubject(triples: Seq[Triple]): Triple = {
+  def squashBySubject(triples: collection.Seq[Triple]): Triple = {
     (triples.length: @switch) match {
       case 0 =>
         throw new IllegalArgumentException("squash of empty list")
