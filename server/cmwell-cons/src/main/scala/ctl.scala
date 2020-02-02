@@ -1596,6 +1596,7 @@ abstract class Host(user: String,
 
     // scalastyle:off
     val createTopicCommandPrefix = s"cd ${instDirs.globalLocation}/cm-well/app/kafka/cur; $exportCommand sh bin/kafka-topics.sh --create --zookeeper ${pingAddress}:2181 --replication-factor $replicationFactor --partitions ${hosts.size} --topic"
+    val createTopicCommandPrefixOnePartition = s"cd ${instDirs.globalLocation}/cm-well/app/kafka/cur; $exportCommand sh bin/kafka-topics.sh --create --zookeeper ${pingAddress}:2181 --replication-factor $replicationFactor --partitions 1 --topic"
 
     // scalastyle:on
     var tryNum: Int = 1
@@ -1631,7 +1632,7 @@ abstract class Host(user: String,
     while (ret.isFailure || !ret.get.contains("Created topic") && tryNum < 6) {
       tryNum += 1
       Thread.sleep(5000)
-      ret = command(s"$createTopicCommandPrefix red_queue", hosts(0), false)
+      ret = command(s"$createTopicCommandPrefixOnePartition red_queue", hosts(0), false)
     }
   }
 
