@@ -96,7 +96,9 @@ class NodeActor extends Actor with LazyLogging {
 
   def receive = membershipReceive.orElse {
     case ShutdownNode(addr) =>
-      logger.info(s"[GridListener] Downing node $addr")
+      import cmwell.util.string.Sanitize
+
+      logger.info(san"[GridListener] Downing node $addr")
       cluster.leave(addr)
       shutdownQueue = shutdownQueue.filterNot(t => t._1 != addr)
 

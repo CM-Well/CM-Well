@@ -35,6 +35,7 @@ import scala.concurrent.{Future, Promise}
 import scala.util.{Failure, Success}
 import cmwell.common.metrics.WithMetrics
 import cmwell.zstore.ZStore
+import cmwell.util.string.Sanitize
 
 import scala.concurrent._
 import duration._
@@ -408,7 +409,7 @@ class IRWServiceNativeImpl(storageDao: Dao,
         case oi => {
           if (oi.isDefined) {
             if (level == QUORUM && retry) {
-              logger.warn(s"The uuid $uuid is only available in QUORUM")
+              logger.warn(sans"The uuid $uuid is only available in QUORUM"))
             }
             if (oi.get.uuid != uuid) {
               logger.error(
@@ -595,7 +596,7 @@ class IRWServiceNativeImpl(storageDao: Dao,
             case None if level == ONE => readPathAndLast(path, QUORUM, retry = true)
             case oss =>
               if (oss.isDefined && level == QUORUM && retry)
-                logger.warn(s"The path $path is only available with QUORUM")
+                logger.warn(sanitizeLogLine(s"The path $path is only available with QUORUM"))
               Future.successful(oss)
           }
           .flatMap(identity)
@@ -651,7 +652,7 @@ class IRWServiceNativeImpl(storageDao: Dao,
       .flatMap {
         case None if level == ONE => readPathUUIDA(path, QUORUM, retry = true)
         case os =>
-          if (os.isDefined && level == QUORUM && retry) logger.warn(s"The path $path is only available in QUORUM")
+          if (os.isDefined && level == QUORUM && retry) logger.warn(sanitizeLogLine(s"The path $path is only available in QUORUM"))
           Future.successful(Box(os))
       }
       .recover(recoverAsBoxedFailure)

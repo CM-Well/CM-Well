@@ -80,7 +80,8 @@ class LogLevelHandler @Inject()(authUtils: AuthUtils) extends InjectedController
             f2
           }
 
-          logger.info(s"Changing the log level of [${members.mkString(", ")}] to $level")
+          import cmwell.util.string.Sanitize
+          logger.info(san"Changing the log level of [${members.mkString(", ")}] to $level")
 
           members.foreach { member =>
             Grid.selectActor(MonitorActor.name, member) ! SetNodeLogLevel(level, duration.map(_.toInt))

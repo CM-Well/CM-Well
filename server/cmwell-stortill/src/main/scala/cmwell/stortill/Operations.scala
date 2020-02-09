@@ -26,6 +26,7 @@ import cmwell.stortill.Strotill._
 import cmwell.syntaxutils._
 import cmwell.util.BoxedFailure
 import cmwell.util.stream.{MapInitAndLast, SortedStreamsMergeBy}
+import cmwell.util.string.Sanitize
 import com.typesafe.scalalogging.{LazyLogging, Logger}
 import org.elasticsearch.action.DocWriteRequest
 import org.elasticsearch.action.bulk.BulkResponse
@@ -269,7 +270,7 @@ class ProxyOperations private (irw: IRWService, ftsService: FTSService)
                       Future
                         .traverse(is.filterNot(_ == maxiton)) { i =>
                           log.debug(
-                            s"purging  an infoton only because lastModified collision: ${ProxyOperations.jsonFormatter.render(i)}"
+                            san"purging  an infoton only because lastModified collision: ${ProxyOperations.jsonFormatter.render(i)}"
                           )
                           // we are purging an infoton only because lastModified collision,
                           // but we should log the lost data (JsonFormatter which preserves the "last name" hash + quads data?)
@@ -279,13 +280,13 @@ class ProxyOperations private (irw: IRWService, ftsService: FTSService)
                           }
                             .recover {
                               case e: Throwable =>
-                                log.info(s"purge from es failed for uuid=${i.uuid} of path=${i.systemFields.path}", e); i
+                                log.info(san"purge from es failed for uuid=${i.uuid} of path=${i.systemFields.path}", e); i
                             }
                           val f2 = retry(
                             purgeFromCas(i.systemFields.path, i.uuid, onlyC.getOrElse(i.uuid, i.systemFields.lastModified.getMillis))
                           ).map(_ => i).recover {
                             case e: Throwable =>
-                              log.info(s"purge from cas failed for uuid=${i.uuid} of path=${i.systemFields.path}", e); i
+                              log.info(san"purge from cas failed for uuid=${i.uuid} of path=${i.systemFields.path}", e); i
                           }
                           f1.flatMap(_ => f2)
                         }
@@ -310,7 +311,7 @@ class ProxyOperations private (irw: IRWService, ftsService: FTSService)
                                 retry(irw.setPathLast(i, cmwell.irw.QUORUM)).recover {
                                   case e: Throwable =>
                                     log.info(
-                                      s"setPathLast failed for uuid=${onlyEsInfoton.uuid} of path=${onlyEsInfoton.systemFields.path}",
+                                      san"setPathLast failed for uuid=${onlyEsInfoton.uuid} of path=${onlyEsInfoton.systemFields.path}",
                                       e
                                     )
                                     onlyEsInfoton

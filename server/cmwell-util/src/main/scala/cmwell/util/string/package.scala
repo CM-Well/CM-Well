@@ -307,4 +307,25 @@ package object string extends LazyLogging {
       }
     }
   }
+
+  def sanitizeLogLine(line: String): String = line.flatMap { c =>
+    c match {
+      case '\u0000' => "\\0"
+      case '\b'     => "\\b"
+      case '\t'     => "\\t"
+      case '\n'     => "\\n"
+      case '\r'     => "\\r"
+      //      case 0x1a => "\\Z" // not sure about this case
+      case '"'  => "\\\""
+      case '%'  => "\\%"
+      case '\'' => "\\'"
+      case '\\' => "\\\\"
+      case '_'  => "\\_"
+      case _    => c.toString
+    }
+  }
+
+  implicit class Sanitize(val sc: StringContext) extends AnyVal {
+    def san(args: Any*): String = sanitizeLogLine(sc.s(args: _*))
+  }
 }

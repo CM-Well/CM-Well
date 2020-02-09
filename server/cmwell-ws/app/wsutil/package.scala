@@ -27,6 +27,7 @@ import cmwell.web.ld.cmw.CMWellRDFHelper
 import cmwell.web.ld.exceptions.{UnretrievableIdentifierException, UnsupportedURIException}
 import cmwell.ws.Settings
 import cmwell.ws.util.{ExpandGraphParser, FieldNameConverter, PathGraphExpansionParser}
+import cmwell.util.string.Sanitize
 import com.typesafe.scalalogging.LazyLogging
 import controllers.SpaMissingException
 import filters.Attrs
@@ -761,7 +762,7 @@ package object wsutil extends LazyLogging {
       dexp: DirectedExpansion
     )(iv: (Infoton, Vector[Infoton])): Future[(Infoton, Vector[Infoton])] = {
       logger.trace(
-        s"filterByDirectedExpansion($dexp): with original[${iv._1.systemFields.path}] and current-pop[${iv._2.map(_.systemFields.path).mkString(", ")}]"
+        san"filterByDirectedExpansion($dexp): with original[${iv._1.path}] and current-pop[${iv._2.map(_.path).mkString(", ")}]"
       )
       dexp match {
         case ExpandIn(filteredFields) =>
@@ -777,7 +778,7 @@ package object wsutil extends LazyLogging {
               iv._1 -> {
                 val rv = l.toVector ++ r
                 logger.trace(
-                  s"filterByDirectedExpansion($dexp): after expandIn($filteredFields), finished with result[${rv.map(_.systemFields.path).mkString(", ")}]"
+                  san"filterByDirectedExpansion($dexp): after expandIn($filteredFields), finished with result[${rv.map(_.path).mkString(", ")}]"
                 )
                 rv
               }
@@ -798,7 +799,7 @@ package object wsutil extends LazyLogging {
               iv._1 -> {
                 val rv = l.toVector ++ r
                 logger.trace(
-                  s"filterByDirectedExpansion($dexp): after expandIn($filteredFields), finished with result[${rv.map(_.systemFields.path).mkString(", ")}]"
+                  san"filterByDirectedExpansion($dexp): after expandIn($filteredFields), finished with result[${rv.map(_.path).mkString(", ")}]"
                 )
                 rv
               }
