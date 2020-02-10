@@ -1,4 +1,4 @@
-
+import CMWellBuild.autoImport._
 
 //import NativePackagerKeys._
 

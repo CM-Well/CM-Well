@@ -1,3 +1,5 @@
+import CMWellBuild.autoImport._
+
 import sbt.Package.ManifestAttributes
 
 name := "cmwell-controller"

@@ -19,7 +19,7 @@ import cmwell.domain.FString
 import cmwell.rts.{Rule, Publisher}
 import k.grid.{GridConnection, Grid}
 import scala.io.StdIn
-import domain.testUtil.InfotonGenerator.genericSystemFields
+import cmwell.domain.testUtil.InfotonGenerator.genericSystemFields
 
 /**
  * Created by markz on 7/10/14.

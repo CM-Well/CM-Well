@@ -1,6 +1,13 @@
+import CMWellBuild.autoImport._
+
+import sbt._
+import sbt.Keys.managedResourceDirectories
+
 import scala.concurrent.Promise
 import scala.util.Try
-import cmwell.build.{Versions,CMWellCommon}, CMWellCommon.Tags
+import Versions._
+import CMWellCommon._
+
 import scala.sys.process._
 
 name := "cmwell-it"
@@ -72,7 +79,7 @@ def installCmwell = Def.taskDyn[Array[(String,String)]] {
   val pe = (peScript in LocalProject("cons")).value
   Def.task[Array[(String,String)]] {
     launchCmwell(targetDir,log,pe)
-  }.tag(Tags.IntegrationTests)
+  }.tag(CommonTags.IntegrationTests)
 }
 
 def launchCmwell(targetDir: File, log: Logger, pe: File): Array[(String,String)] = {
@@ -85,7 +92,6 @@ def launchCmwell(targetDir: File, log: Logger, pe: File): Array[(String,String)]
   Thread.sleep(10000)
   arr
 }
-
 
 parallelExecution in Test := true
 
@@ -117,11 +123,3 @@ testOptions in IntegrationTest ++= {
     }
   }))
 }
-
-itScalastyle in ThisProject := (scalastyle in ThisProject).in(IntegrationTest).toTask("").value
-
-test in IntegrationTest := Def.task {
-  itScalastyle.value
-  (test in IntegrationTest).value
-}.tag(Tags.ES,Tags.Cassandra,Tags.Kafka,Tags.Grid).value
-

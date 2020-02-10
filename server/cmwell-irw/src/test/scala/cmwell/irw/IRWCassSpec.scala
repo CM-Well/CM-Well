@@ -30,7 +30,7 @@ import scala.concurrent.duration._
 import scala.util.Try
 import cmwell.util.testSuitHelpers.test.CassandraDockerSuite
 import play.api.libs.json.Json
-import domain.testUtil.InfotonGenerator.genericSystemFields
+import cmwell.domain.testUtil.InfotonGenerator.genericSystemFields
 
 
 /**

@@ -16,7 +16,7 @@
 
 package cmwell.bg.test
 
-import domain.testUtil.InfotonGenerator.genericSystemFields
+import cmwell.domain.testUtil.InfotonGenerator.genericSystemFields
 import cmwell.bg.Merger
 import cmwell.domain.{FNull, FieldValue, ObjectInfoton}
 import cmwell.common.{DeletePathCommand, UpdatePathCommand, WriteCommand}

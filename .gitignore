@@ -6,6 +6,9 @@
 *.class
 *.log
 
+#bloop
+server/.bloop
+
 #cmwell specific
 .credentials
 server/cmwell-cons/app/components/

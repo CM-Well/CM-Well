@@ -31,7 +31,7 @@ import org.scalatest.{AsyncFlatSpec, BeforeAndAfterAll, Inspectors, Matchers}
 
 import scala.concurrent.{Await, ExecutionContext, Future}
 import akka.pattern.ask
-import domain.testUtil.InfotonGenerator.genericSystemFields
+import cmwell.domain.testUtil.InfotonGenerator.genericSystemFields
 
 import scala.concurrent.duration._
 

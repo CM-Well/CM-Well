@@ -1,3 +1,5 @@
+import CMWellBuild.autoImport._
+
 name := "cmwell-rts-ng"
 
 //libraryDependencies ++= {
@@ -8,4 +10,4 @@ name := "cmwell-rts-ng"
 //  ).map(_.exclude("io.netty","netty"))
 //}
 
-test in Test := Def.task((test in Test).value).tag(cmwell.build.CMWellCommon.Tags.Grid).value
+test in Test := Def.task((test in Test).value).tag(CMWellCommon.CommonTags.Grid).value
