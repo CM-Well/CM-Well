@@ -19,7 +19,7 @@ package cmwell.common
 import org.scalacheck._
 import Prop.forAll
 import cmwell.domain._
-import cmwell.domain.testUtil.InfotonGenerator.genericSystemFields
+import domain.testUtil.InfotonGenerator.genericSystemFields
 
 /**
  * Created by gilad on 7/29/14.

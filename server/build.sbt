@@ -1,3 +1,6 @@
+
+
+
 import CMWellBuild.autoImport._
 import play.sbt.PlayScala
 import play.twirl.sbt.SbtTwirl
@@ -220,6 +223,8 @@ excludeDependencies in ThisBuild += "org.slf4j" % "slf4j-jdk14"
 
 printDate := streams.value.log.info("date: " + org.joda.time.DateTime.now().toString())
 
+lazy val DomainUtil = config("domainUtil") extend(Compile)
+
 lazy val util = (project in file("cmwell-util"))
   .settings(CMWellBuild.projectSettings)
 
@@ -229,8 +234,12 @@ lazy val kafkaAssigner = (project in file("cmwell-kafka-assigner"))
 lazy val dao = (project in file("cmwell-dao"))
   .settings(CMWellBuild.projectSettings)
 
-lazy val domain = (project in file("cmwell-domain"))
-  .settings(CMWellBuild.projectSettings)
+lazy val domain = (project in file("cmwell-domain")).configs(DomainUtil)
+  .settings(
+    CMWellBuild.projectSettings,
+    inConfig(DomainUtil)(Defaults.configSettings),
+    (Test / managedSources) += baseDirectory.value / "src" / "domainUtil" / "scala" / "domain" /"testUtil" / "InfotonGenerator.scala",
+  )
   .dependsOn (util)
 
 lazy val zstore = (project in file("cmwell-zstore"))
@@ -239,7 +248,7 @@ lazy val zstore = (project in file("cmwell-zstore"))
 
 lazy val common = (project in file("cmwell-common"))
   .enablePlugins(BuildInfoPlugin)
-  .dependsOn(zstore, domain % "compile->compile;test->test")
+  .dependsOn(zstore, domain % "compile->compile;test->domainUtil")
   .settings(CMWellBuild.projectSettings)
 
 lazy val grid = (project in file("cmwell-grid"))

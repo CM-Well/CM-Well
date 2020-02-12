@@ -13,6 +13,7 @@ libraryDependencies ++= {
     dm("org.joda", "joda-convert"),
     dm("org.slf4j", "slf4j-api"),
     dm("org.scalacheck", "scalacheck") % "test",
-    dm("org.slf4j", "jcl-over-slf4j")
+    dm("org.slf4j", "jcl-over-slf4j"),
+    dm("org.scalacheck","scalacheck") % "domainUtil"
   )
 }

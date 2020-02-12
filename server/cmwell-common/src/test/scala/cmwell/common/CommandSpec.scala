@@ -16,7 +16,7 @@
 
 package cmwell.common
 
-import cmwell.domain.testUtil.InfotonGenerator.genericSystemFields
+import domain.testUtil.InfotonGenerator.genericSystemFields
 import cmwell.common.formats.{CompleteOffset, Offset, PartialOffset}
 import cmwell.domain.{FString, _}
 import com.typesafe.scalalogging.LazyLogging
