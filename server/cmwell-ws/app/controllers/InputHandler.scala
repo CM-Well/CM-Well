@@ -488,6 +488,10 @@ class InputHandler @Inject()(ingestPushback: IngestPushback,
                           case (iPath, fMap) =>
                             prependSlash(iPath) -> fMap.map {
                               case (fk, _) => fk.internalKey -> Some(Set(quadForReplacement))
+                              case (fk, vs) if (LDFormatParser.isWildCardUrl(quadForReplacement.quad.getOrElse(""))) =>
+                                fk.internalKey -> Some(vs.filter { fv =>
+                                  LDFormatParser.wildCardMatches(quadForReplacement.quad.getOrElse("/*"), fv.quad.getOrElse(""))
+                                })
                             }
                         }
                       }

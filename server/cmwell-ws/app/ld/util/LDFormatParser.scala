@@ -801,9 +801,7 @@ object LDFormatParser extends LazyLogging {
                         r.getNameSpace + r.getLocalName
                       }}] as a valid field to be markReplaced."
                     )
-                  cmwellFieldName.foreach { fieldName =>
-                    updateDeleteMap(deleteFieldsMap, subject, fieldName, subGraph)
-                  }
+                  updateDeleteMap(deleteFieldsMap, subject, cmwellFieldName.get, subGraph)
                 }
                 case Left(PrevUUID) => {
                   val uuid = obj.toString
@@ -882,7 +880,9 @@ object LDFormatParser extends LazyLogging {
                       cmwellFieldName: String,
                       quad: Option[String]): Unit = {
     val fToDel = cmwellFieldName -> quad
+//    val fAll = Set(("*" -> quad))
     deleteFieldsMap.get(prependSlash(infotonPath)) match {
+//      case Some(fieldSet) if (!fieldSet(fToDel) && cmwellFieldName == "*") => deleteFieldsMap.update(prependSlash(infotonPath), fAll)
       case Some(fieldSet) if !fieldSet(fToDel) => deleteFieldsMap.update(prependSlash(infotonPath), fieldSet + fToDel)
       case None                                => deleteFieldsMap.update(prependSlash(infotonPath), Set(fToDel))
       case _                                   => //DO NOTHING (the deleted field already exist in the deleteFieldsMap)
@@ -915,9 +915,24 @@ object LDFormatParser extends LazyLogging {
     }
   }
 
-  private def urlValidate(u: String): Boolean =
+  private[util] def urlValidate(u: String): Boolean =
     Try(new java.net.URL(u)).isSuccess ||
       (u.startsWith(cmwell) && Try(new java.net.URL(http + u.drop(cmwell.length))).isSuccess)
+
+  private[util] def wildcardUrlValidate(u: String) : Boolean = Try(new java.net.URL(u)).toOption.forall { url =>
+    val numberOfWildcards = url.getPath.count(_ == '*')
+    if (numberOfWildcards > 1) {
+      false
+    } else if (numberOfWildcards == 1) {
+      url.getPath.endsWith("/*") || url.getPath.endsWith("#*") || url.getPath.endsWith("/#*")
+    } else true
+  }
+
+  def isWildCardUrl(u: String) : Boolean = wildcardUrlValidate(u) && (u.endsWith("/*") || u.endsWith("#*") || u.endsWith("/#*"))
+
+  def wildCardMatches(u: String, quad: String) : Boolean = quad.startsWith(u.stripSuffix("/*")) ||
+    quad.startsWith(u.stripSuffix("#*")) ||
+    quad.startsWith(u.stripSuffix("/#*"))
 
   def getCmwellFieldNameForUrl(cmwellRDFHelper: CMWellRDFHelper,
                                timeContext: Option[Long],
@@ -926,9 +941,11 @@ object LDFormatParser extends LazyLogging {
     case "*" => Some("*")
     case _ => {
       require(urlValidate(predicateUrl), s"the url: ${predicateUrl} is not a valid predicate url for ingest.")
+      require(wildcardUrlValidate(predicateUrl), s"the url: ${predicateUrl} has invalid wildcard format, expected: http://example.org/subject/*")
       val (url, firstName) = localName match {
-        case None => {
-          val fName = predicateUrl.reverse.takeWhile(!uriSeparator(_)).reverse
+        case None => { // TODO: this can be removed
+          val wildCardStrippedUrl = predicateUrl.stripSuffix("/*")
+          val fName = wildCardStrippedUrl.reverse.takeWhile(!uriSeparator(_)) .reverse
           val url = predicateUrl.dropRight(fName.length)
           (url, fName)
         }
