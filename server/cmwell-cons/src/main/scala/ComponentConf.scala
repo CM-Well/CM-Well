@@ -627,7 +627,7 @@ case class CwConf(home: String,
                   hostIp: String,
                   seeds: String,
                   seedPort: Int,
-                  subjectsInSpAreHttps: Boolean)
+                  subjectsInSpAreHttps: Seq[String])
     extends ComponentConf(hostIp, s"$home/app/ws", sName, s"$home/conf/cw", "ws.yml", 1) {
   override def mkScript: ConfFile = {
     {
@@ -646,7 +646,7 @@ case class CwConf(home: String,
           "-Dcom.sun.management.jmxremote.ssl=false",
           "-Dcom.sun.management.jmxremote.authenticate=false",
           "-Duser.timezone=GMT0",
-          s"-Dcrashableworker.subjectsAreHttps=$subjectsInSpAreHttps"
+          s"-Dcrashableworker.subjectsAreHttps=${subjectsInSpAreHttps.mkString(",")}"
         ) ++ JVMOptimizer.gcLoggingJVM(s"$home/log/ws/gc.log") ++
         Seq("-cp", s""" "cw-conf:$home/app/ws/lib/*" """, "cmwell.crashableworker.WorkerMain")
 

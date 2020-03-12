@@ -185,7 +185,7 @@ abstract class Host(user: String,
                     haProxy: Option[HaProxy],
                     withElk: Boolean = false,
                     isDebug: Boolean = false,
-                    subjectsInSpAreHttps: Boolean = false,
+                    subjectsInSpAreHttps: Seq[String] = Seq.empty,
                     defaultRdfProtocol: String = "http") {
 
   val cmwellPropertiesFile = "cmwell.properties"

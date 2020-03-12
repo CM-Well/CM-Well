@@ -39,7 +39,7 @@ case class Grid(user: String,
                 newBg: Boolean = true,
                 oldBg: Boolean = true,
                 nbg: Boolean = false,
-                subjectsInSpAreHttps: Boolean = false,
+                subjectsInSpAreHttps: Seq[String] = Seq.empty,
                 defaultRdfProtocol: String = "http")
     extends Host(
       user,

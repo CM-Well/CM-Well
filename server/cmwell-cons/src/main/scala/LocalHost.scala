@@ -29,7 +29,7 @@ case class LocalHost(dataCenter: String = "lh",
                      oldBg: Boolean = true,
                      nbg: Boolean = false,
                      isDebug: Boolean = false,
-                     subjectsInSpAreHttps: Boolean = false,
+                     subjectsInSpAreHttps: Seq[String] = Seq.empty,
                      defaultRdfProtocol: String = "http")
     extends Host(
       System.getProperty("user.name"),
