@@ -36,7 +36,7 @@ case class GridSubDiv(user: String,
                       dcTarget: Option[String] = None,
                       minMembers: Option[Int] = None,
                       withElk: Boolean = false,
-                      subjectsInSpAreHttps: Boolean = false,
+                      subjectsInSpAreHttps: Seq[String] = Seq.empty,
                       defaultRdfProtocol: String = "http")
     extends Host(
       user,

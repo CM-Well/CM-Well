@@ -335,15 +335,26 @@ object PopulateAndQuery extends LazyLogging {
     }
   }
 
+
+  private lazy val httpsPaths: Set[String] = {
+    import scala.collection.JavaConverters._
+    Settings.subjectsInSpAreHttps.asScala.toSet
+  }
+
   def loadRdfToDataset(ntriplesOrNquads: InputStream, ds: Dataset = DatasetFactory.createGeneral()): Dataset = {
 
     //FIXME This is a temporary ugly hack (&& a quick win for an important customer) - in near future we will preserve HTTPS per Infoton
     def mapSubjectsToHttps(inputStream: InputStream): InputStream = {
       val lines = scala.io.Source.fromInputStream(ntriplesOrNquads, "UTF-8").mkString.split('\n')
-      new ByteArrayInputStream(lines.map(_.replaceAll("""^s*<http://""", "<https://")).mkString("\n").getBytes("UTF-8"))
+      new ByteArrayInputStream(lines.map { line =>
+        if(httpsPaths.exists(p => line.trim.startsWith(s"<http:/$p")))
+          line.replaceAll("""^<http://""", "<https://")
+        else
+          line
+      }.mkString("\n").getBytes("UTF-8"))
     }
 
-    val modifiedInput = if(Settings.subjectsInSpAreHttps) mapSubjectsToHttps(ntriplesOrNquads) else ntriplesOrNquads
+    val modifiedInput = if(httpsPaths.nonEmpty) mapSubjectsToHttps(ntriplesOrNquads) else ntriplesOrNquads
     RDFDataMgr.read(ds, modifiedInput, Lang.NQUADS)
     ds
   }
