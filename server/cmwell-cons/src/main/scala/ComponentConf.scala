@@ -645,8 +645,7 @@ case class CwConf(home: String,
           s"-Dcom.sun.management.jmxremote.port=${PortManagers.ws.jmxPortManager.getPort(2)}",
           "-Dcom.sun.management.jmxremote.ssl=false",
           "-Dcom.sun.management.jmxremote.authenticate=false",
-          "-Duser.timezone=GMT0",
-          s"-Dcrashableworker.subjectsAreHttps=${subjectsInSpAreHttps.mkString(",")}"
+          "-Duser.timezone=GMT0"
         ) ++ JVMOptimizer.gcLoggingJVM(s"$home/log/ws/gc.log") ++
         Seq("-cp", s""" "cw-conf:$home/app/ws/lib/*" """, "cmwell.crashableworker.WorkerMain")
 
@@ -682,7 +681,8 @@ case class CwConf(home: String,
       "quads.globalOperations.results.maxLength" -> s"10000",
       "crashableworker.results.maxLength" -> s"1400000",
       "arq.extensions.embedLimit" -> s"10000",
-      "crashableworker.results.baseFileName" -> s"tmpSpResults"
+      "crashableworker.results.baseFileName" -> s"tmpSpResults",
+      "crashableworker.subjectsAreHttps" -> subjectsInSpAreHttps.mkString(",")
     )
 
     val m = Map[String, String](
