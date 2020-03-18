@@ -20,14 +20,17 @@ import akka.http.scaladsl.Http
 import akka.http.scaladsl.coding.Gzip
 import akka.http.scaladsl.model.headers.{HttpEncodings, RawHeader, `Accept-Encoding`, `Content-Encoding`}
 import akka.http.scaladsl.model.{HttpEntity, _}
+import akka.http.scaladsl.settings.ConnectionPoolSettings
 import akka.stream.Supervision._
 import akka.stream.scaladsl.{Flow, Keep, Sink, Source}
 import akka.stream.stage.{GraphStage, GraphStageLogic, GraphStageWithMaterializedValue, InHandler}
 import akka.stream._
 import akka.util.{ByteString, ByteStringBuilder}
+import cmwell.dc.Settings.config
 import cmwell.dc.{LazyLogging, Settings, stream}
 import cmwell.dc.stream.MessagesTypesAndExceptions._
 import cmwell.dc.stream.SingleMachineInfotonIngester.IngestInput
+import com.typesafe.config.ConfigFactory
 
 import scala.concurrent.{Await, Future}
 import scala.util.{Failure, Success, Try}
@@ -53,6 +56,16 @@ object SingleMachineInfotonIngester extends LazyLogging {
     mat: Materializer
   ): Flow[(Future[IngestInput], IngestState), (Try[IngestOutput], IngestState), NotUsed] = {
     val checkResponse = checkResponseCreator(dcKey, location, decider) _
+    val poolConfig = ConfigFactory
+      .parseString("akka.http.host-connection-pool.max-connections=1")
+      .withFallback(config)
+    val (host, port) = location.split(':') match { case Array(host, port) => host -> port.toInt}
+    val connPool = Http()
+      .newHostConnectionPool[IngestState](
+        host,
+        port,
+        ConnectionPoolSettings(poolConfig)
+      )
     Flow[(Future[IngestInput], IngestState)]
       .mapAsync(1) { case (input, state) => input.map(_ -> state) }
       .map {
@@ -70,7 +83,7 @@ object SingleMachineInfotonIngester extends LazyLogging {
           (createRequest(location, payload, dcKey.ingestOperation), state)
         }
       }
-      .via(Http().superPool[IngestState]())
+      .via(connPool)
       .map(checkResponse)
   }
 

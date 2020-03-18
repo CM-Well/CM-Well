@@ -79,7 +79,7 @@ object InfotonAllMachinesDistributerAndIngester extends LazyLogging {
           )
           val ingestRetrier =
             //todo: discuss with Moria the implication of this
-            Retry.concat(100, Settings.ingestRetryQueueSize, ingestFlow)(
+            Retry.concat(1, Settings.ingestRetryQueueSize, ingestFlow)(
               retryDecider(dckey, location)
             )
           o ~> infotonAggregator ~> initialStateAdder ~> ingestRetrier ~> mergeIngests
