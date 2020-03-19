@@ -27,7 +27,6 @@ import akka.stream.scaladsl.{Flow, Framing, Source}
 import akka.stream.{ActorAttributes, Materializer}
 import akka.util.{ByteString, ByteStringBuilder}
 import cmwell.dc.Settings._
-import cmwell.dc.stream.InfotonRetriever.RetrieveOutput
 import cmwell.dc.stream.MessagesTypesAndExceptions._
 import cmwell.dc.{LazyLogging, Settings}
 import cmwell.util.akka.http.HttpZipDecoder
@@ -97,7 +96,10 @@ object InfotonRetriever extends LazyLogging {
     val poolConfig = ConfigFactory
       .parseString("akka.http.host-connection-pool.max-connections=1")
       .withFallback(config)
-    val (host, port) = dcKey.location.split(':') match { case Array(host, port) => host -> port.toInt}
+    val (host, port) = dcKey.location.split(':') match {
+      case Array(host) => host -> 80
+      case Array(host, port) => host -> port.toInt
+    }
     val connPool = Http()
       .newHostConnectionPool[RetrieveState](
         host,

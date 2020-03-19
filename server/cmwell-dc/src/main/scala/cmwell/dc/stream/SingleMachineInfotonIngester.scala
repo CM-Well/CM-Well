@@ -23,7 +23,6 @@ import akka.http.scaladsl.model.{HttpEntity, _}
 import akka.http.scaladsl.settings.ConnectionPoolSettings
 import akka.stream.Supervision._
 import akka.stream.scaladsl.{Flow, Keep, Sink, Source}
-import akka.stream.stage.{GraphStage, GraphStageLogic, GraphStageWithMaterializedValue, InHandler}
 import akka.stream._
 import akka.util.{ByteString, ByteStringBuilder}
 import cmwell.dc.Settings.config
@@ -32,10 +31,9 @@ import cmwell.dc.stream.MessagesTypesAndExceptions._
 import cmwell.dc.stream.SingleMachineInfotonIngester.IngestInput
 import com.typesafe.config.ConfigFactory
 
-import scala.concurrent.{Await, Future}
+import scala.concurrent.Future
 import scala.util.{Failure, Success, Try}
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.duration.Duration
 
 /**
   * Created by eli on 27/06/16.
@@ -59,7 +57,10 @@ object SingleMachineInfotonIngester extends LazyLogging {
     val poolConfig = ConfigFactory
       .parseString("akka.http.host-connection-pool.max-connections=1")
       .withFallback(config)
-    val (host, port) = location.split(':') match { case Array(host, port) => host -> port.toInt}
+    val (host, port) = location.split(':') match {
+      case Array(host) => host -> 80
+      case Array(host, port) => host -> port.toInt
+    }
     val connPool = Http()
       .newHostConnectionPool[IngestState](
         host,
