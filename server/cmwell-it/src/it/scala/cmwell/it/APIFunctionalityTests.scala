@@ -664,6 +664,44 @@ class APIFunctionalityTests extends AsyncFunSpec
         }
       }
 
+      describe("cmwell://meta/sys#markReplace predicate with a wildcard") {
+        it("should ingest multiple fields of two ontologies") {
+          val newData =
+            """
+              |<http://example.org/JaneSmith8> <http://www.w3.org/2006/vcard/ns#GENDER> "Female" .
+              |<http://example.org/JaneSmith8> <http://www.w3.org/2006/vcard/ns#FN> "Jane" .
+              |<http://example.org/JaneSmith8> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2006/vcard/ns#Individual> .
+            """.stripMargin
+          Http.post(_in, newData, None, List("format" -> "ntriples"), tokenHeader).map { res =>
+            withClue(res) {
+              jsonSuccessPruner(Json.parse(res.payload)) should be(jsonSuccess)
+            }
+          }
+        }
+        it("should use markReplace with wildcard and verify it removes all relevant fields") {
+          spinCheck(100.millis, true)(Http.get(exampleOrg./("JaneSmith8"), List("format" -> "json"))) { res =>
+            res.status == 200
+          }.flatMap { _ =>
+            val markReplaceData = "<http://example.org/JaneSmith8> <cmwell://meta/sys#markReplace> <http://www.w3.org/2006/vcard/ns#*> ."
+            spinCheck(100.millis, true)(Http.post(_in, markReplaceData, None, List("format" -> "ntriples"), tokenHeader))(res =>
+              Json.parse(res.payload) == jsonSuccess
+            ).map { res =>
+              withClue(new String(res.payload, "UTF-8")) {
+                Json.parse(res.payload) should be(jsonSuccess)
+              }
+            }.flatMap { _ =>
+              spinCheck(100.millis, true)(Http.get(exampleOrg./("JaneSmith8"), List("format" -> "ntriples"))) { res =>
+                val ntriples = new String(res.payload, "UTF-8").split('\n').filterNot(_.contains("/meta/sys"))
+                ntriples.length == 1
+              }
+            }
+          }.flatMap { res =>
+            val ntriples = new String(res.payload, "UTF-8").split('\n').filterNot(_.contains("/meta/sys"))
+            ntriples.length shouldBe 1
+          }
+        }
+      }
+
       it("should deal with anti-jena namespace") {
         val expected = Json.parse(
           s"""
