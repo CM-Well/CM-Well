@@ -670,7 +670,7 @@ class APIFunctionalityTests extends AsyncFunSpec
             """
               |<http://example.org/JaneSmith8> <http://www.w3.org/2006/vcard/ns#GENDER> "Female" .
               |<http://example.org/JaneSmith8> <http://www.w3.org/2006/vcard/ns#FN> "Jane" .
-              |<http://example.org/JaneSmith8> <http://www.w3.org/2006/vcard2/ns#GENDER> "Female" .
+              |<http://example.org/JaneSmith8> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://www.w3.org/2006/vcard/ns#Individual> .
             """.stripMargin
           Http.post(_in, newData, None, List("format" -> "ntriples"), tokenHeader).map { res =>
             withClue(res) {
