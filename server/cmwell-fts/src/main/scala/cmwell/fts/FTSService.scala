@@ -496,7 +496,10 @@ class FTSService(config: Config) extends NsSplitter{
           val (recoverableFailures, nonRecoverableFailures) = allFailures.partition {
             case (itemResponse, _) =>
               itemResponse.getFailureMessage.contains("EsRejectedExecutionException") ||
-              itemResponse.getFailureMessage.contains("timed out while waiting for a dynamic mapping update")
+                itemResponse.getFailureMessage.contains("timed out while waiting for a dynamic mapping update") ||
+                // In case of fast writes the "current=false" command can be before actually writing the infoton and ES will respond with this error,
+                // so it needs to be retried.
+                itemResponse.getFailureMessage.contains("DocumentMissingException")
           }
           val (versionConflictErrors, unexpectedErrors) = nonRecoverableFailures.partition {
             case (itemResponse, _) =>
@@ -539,10 +542,13 @@ class FTSService(config: Config) extends NsSplitter{
           promise.completeWith(res)
         }
 
-      case err @ Failure(exception) =>
+      case err@Failure(exception) =>
         val errorId = err.##
-        if (exception.getLocalizedMessage.contains("EsRejectedExecutionException")) {
+        if (exception.getLocalizedMessage.contains("EsRejectedExecutionException") ||
+          exception.getCause.getMessage.contains("EsRejectedExecutionException")
+        ) {
           logger.warn(s"[!$errorId] Elasticsearch rejected execution of current bulk", exception)
+          logger.warn(s"[!$errorId] The request was: ${indexRequests.map(_.esAction).mkString("\n")}")
           if (numOfRetries > 0) {
             logger.warn(s"[!$errorId] retrying rejected bulk after waiting for $waitBetweenRetries milliseconds")
             val f = SimpleScheduler.scheduleFuture(waitBetweenRetries.milliseconds)(
@@ -554,17 +560,17 @@ class FTSService(config: Config) extends NsSplitter{
             promise.completeWith(f)
           } else {
             logger.error(s"[!$errorId] exhausted all retries attempts. logging failures to RED_LOG ")
+            logger.error(s"[!$errorId] The request was: ${indexRequests.map(_.esAction).mkString("\n")}")
             promise.failure(exception)
           }
         } else {
           logger.error(s"[!$errorId] unexpected Exception from Elasticsearch.", exception)
+          logger.error(s"[!$errorId] The request was: ${indexRequests.map(_.esAction).mkString("\n")}")
           // TODO log to RED_LOG
           promise.failure(exception)
         }
     }
-
     promise.future
-
   }
 
 

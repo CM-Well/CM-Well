@@ -16,14 +16,15 @@ package cmwell.bg
 
 import java.nio.charset.StandardCharsets
 
-import akka.NotUsed
+import akka.{Done, NotUsed}
 import akka.actor.{ActorRef, ActorSystem}
 import akka.event.Logging
 import akka.kafka.scaladsl.Consumer
 import akka.kafka.{ConsumerSettings, Subscriptions}
 import akka.stream.ActorAttributes.supervisionStrategy
 import akka.stream.scaladsl.{Broadcast, Flow, GraphDSL, Keep, Merge, MergePreferred, Partition, RunnableGraph, Sink}
-import akka.stream.{ActorMaterializer, Attributes, ClosedShape, KillSwitches, Supervision}
+import akka.stream.stage.GraphStage
+import akka.stream.{ActorMaterializer, Attributes, ClosedShape, FlowShape, KillSwitches, Supervision}
 import cmwell.common.formats.JsonSerializerForES
 import cmwell.common.formats.{BGMessage, CompleteOffset, Offset}
 import cmwell.fts._
@@ -34,6 +35,7 @@ import cmwell.common.exception.getStackTrace
 import cmwell.domain.Infoton
 import cmwell.tracking._
 import cmwell.util.concurrent.travector
+import cmwell.util.stream.StreamEventInspector
 import cmwell.zstore.ZStore
 import com.typesafe.config.Config
 import com.typesafe.scalalogging.{LazyLogging, Logger}
@@ -193,6 +195,7 @@ class IndexerStream(partition: Int,
     }
 
   import scala.language.existentials
+/* - disabled and now the same logic as imp offsets is used also for the indexer ones
   val commitOffsets = Flow[Seq[Offset]]
     .groupedWithin(6000, 3.seconds)
       .mapAsync(1) { offsetGroups =>
@@ -212,15 +215,20 @@ class IndexerStream(partition: Int,
           }
       }
     .toMat(Sink.ignore)(Keep.right)
+*/
 
   val persistCommandsTopic: String = config.getString("cmwell.bg.persist.commands.topic")
   val impOffsetsInIndexerId = s"persistOffsetsDoneByIndexer.${partition}"
   val impStreamId = s"imp.$partition"
   val startingImpOffset: Long = offsetsService.read(s"${impStreamId}_offset").getOrElse(0L)
   val startingImpOffsetPriority: Long = offsetsService.read(s"$impStreamId.p_offset").getOrElse(0L)
+  val startingIndexerOffset: Long = offsetsService.read(s"${streamId}_offset").getOrElse(0L)
+  val startingIndexerOffsetPriority: Long = offsetsService.read(s"$streamId.p_offset").getOrElse(0L)
   logger.info(s"Setting initial values [normal, priority] for persistOffsetsDoneByIndexer to be [$startingImpOffset, $startingImpOffsetPriority]")
-  val commitImpOffsets =
+  val commitImpOffsets: Sink[Seq[Offset], Future[Done]] =
     OffsetUtils.commitOffsetSink(impOffsetsInIndexerId, persistCommandsTopic, startingImpOffset, startingImpOffsetPriority, offsetsService)
+  val commitIndexerOffsets: Sink[Seq[Offset], Future[Done]] =
+    OffsetUtils.commitOffsetSink(streamId, indexCommandsTopic, startingIndexerOffset, startingIndexerOffsetPriority, offsetsService)
   val indexerGraph =
     RunnableGraph.fromGraph(
       GraphDSL
@@ -228,7 +236,7 @@ class IndexerStream(partition: Int,
           indexCommandsSource,
           priorityIndexCommandsSource,
           commitImpOffsets,
-          commitOffsets
+          commitIndexerOffsets
         )((_, _, m3, m4) => m3.flatMap(_ => m4)) { implicit builder =>
           (batchSource, prioritySource, impOffsetsSink, indexerOffsetsSink) =>
             import GraphDSL.Implicits._
@@ -537,5 +545,5 @@ class IndexerStream(partition: Int,
                          weight: Long,
                          indexTime: Option[Long]
                        )
-
 }
+
