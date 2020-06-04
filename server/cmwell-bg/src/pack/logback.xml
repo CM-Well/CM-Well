@@ -6,7 +6,7 @@
             <fileNamePattern>logs/application-log-%d{yyyy-MM-dd, UTC}.%i.gz</fileNamePattern>
             <!-- keep 1 week worth of history (max 20GB) with each file compressed after 100MB -->
             <maxFileSize>100MB</maxFileSize>
-            <maxHistory>7</maxHistory>
+            <maxHistory>21</maxHistory>
             <totalSizeCap>20GB</totalSizeCap>
             <!-- in case of process terminating too early for rollover - do the rollover during start -->
             <cleanHistoryOnStart>true</cleanHistoryOnStart>
@@ -38,7 +38,7 @@
             <fileNamePattern>${application.home:-.}/logs/markedLog-log-%d{yyyy-MM-dd, UTC}.%i.gz</fileNamePattern>
             <!-- keep 1 week worth of history (max 20GB) with each file compressed after 100MB -->
             <maxFileSize>100MB</maxFileSize>
-            <maxHistory>7</maxHistory>
+            <maxHistory>21</maxHistory>
             <totalSizeCap>20GB</totalSizeCap>
             <!-- in case of process terminating too early for rollover - do the rollover during start -->
             <cleanHistoryOnStart>true</cleanHistoryOnStart>
@@ -70,7 +70,7 @@
             <fileNamePattern>logs/imp-application-log-%d{yyyy-MM-dd, UTC}.%i.gz</fileNamePattern>
             <!-- keep 1 week worth of history (max 20GB) with each file compressed after 100MB -->
             <maxFileSize>100MB</maxFileSize>
-            <maxHistory>7</maxHistory>
+            <maxHistory>21</maxHistory>
             <totalSizeCap>20GB</totalSizeCap>
             <!-- in case of process terminating too early for rollover - do the rollover during start -->
             <cleanHistoryOnStart>true</cleanHistoryOnStart>
@@ -95,7 +95,7 @@
             <fileNamePattern>logs/indexer-application-log-%d{yyyy-MM-dd, UTC}.%i.gz</fileNamePattern>
             <!-- keep 1 week worth of history (max 20GB) with each file compressed after 100MB -->
             <maxFileSize>100MB</maxFileSize>
-            <maxHistory>7</maxHistory>
+            <maxHistory>21</maxHistory>
             <totalSizeCap>20GB</totalSizeCap>
             <!-- in case of process terminating too early for rollover - do the rollover during start -->
             <cleanHistoryOnStart>true</cleanHistoryOnStart>
@@ -120,7 +120,7 @@
             <fileNamePattern>logs/es-log-%d{yyyy-MM-dd, UTC}.%i.gz</fileNamePattern>
             <!-- keep 1 week worth of history (max 20GB) with each file compressed after 100MB -->
             <maxFileSize>100MB</maxFileSize>
-            <maxHistory>7</maxHistory>
+            <maxHistory>21</maxHistory>
             <totalSizeCap>20GB</totalSizeCap>
             <!-- in case of process terminating too early for rollover - do the rollover during start -->
             <cleanHistoryOnStart>true</cleanHistoryOnStart>
@@ -145,7 +145,7 @@
             <fileNamePattern>logs/akka-log-%d{yyyy-MM-dd, UTC}.%i.gz</fileNamePattern>
             <!-- keep 1 week worth of history (max 20GB) with each file compressed after 100MB -->
             <maxFileSize>100MB</maxFileSize>
-            <maxHistory>7</maxHistory>
+            <maxHistory>21</maxHistory>
             <totalSizeCap>20GB</totalSizeCap>
             <!-- in case of process terminating too early for rollover - do the rollover during start -->
             <cleanHistoryOnStart>true</cleanHistoryOnStart>
@@ -170,7 +170,7 @@
             <fileNamePattern>logs/red-log-%d{yyyy-MM-dd, UTC}.%i.gz</fileNamePattern>
             <!-- keep 1 week worth of history (max 20GB) with each file compressed after 100MB -->
             <maxFileSize>100MB</maxFileSize>
-            <maxHistory>7</maxHistory>
+            <maxHistory>21</maxHistory>
             <totalSizeCap>20GB</totalSizeCap>
             <!-- in case of process terminating too early for rollover - do the rollover during start -->
             <cleanHistoryOnStart>true</cleanHistoryOnStart>
@@ -195,7 +195,7 @@
             <fileNamePattern>logs/heartbeat-log-%d{yyyy-MM-dd, UTC}.%i.gz</fileNamePattern>
             <!-- keep 1 week worth of history (max 20GB) with each file compressed after 100MB -->
             <maxFileSize>100MB</maxFileSize>
-            <maxHistory>7</maxHistory>
+            <maxHistory>21</maxHistory>
             <totalSizeCap>20GB</totalSizeCap>
             <!-- in case of process terminating too early for rollover - do the rollover during start -->
             <cleanHistoryOnStart>true</cleanHistoryOnStart>
@@ -220,7 +220,7 @@
             <fileNamePattern>logs/crawler-log-%d{yyyy-MM-dd, UTC}.%i.gz</fileNamePattern>
             <!-- keep 1 week worth of history (max 20GB) with each file compressed after 100MB -->
             <maxFileSize>100MB</maxFileSize>
-            <maxHistory>7</maxHistory>
+            <maxHistory>21</maxHistory>
             <totalSizeCap>20GB</totalSizeCap>
             <!-- in case of process terminating too early for rollover - do the rollover during start -->
             <cleanHistoryOnStart>true</cleanHistoryOnStart>
