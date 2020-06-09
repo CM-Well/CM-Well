@@ -473,7 +473,7 @@ class FTSService(config: Config) extends NsSplitter{
     * @param executionContext
     * @return
     */
-  def executeBulkIndexRequests(indexRequests:Iterable[ESIndexRequest], numOfRetries: Int = 15, waitBetweenRetries:Long = 500)
+  def executeBulkIndexRequests(indexRequests:Iterable[ESIndexRequest], numOfRetries: Int = 30, waitBetweenRetries:Long = 500)
                               (implicit executionContext:ExecutionContext, logger:Logger = loger) : Future[SuccessfulBulkIndexResult] = {
 
     logger.debug(s"indexRequests:$indexRequests")
@@ -499,7 +499,10 @@ class FTSService(config: Config) extends NsSplitter{
                 itemResponse.getFailureMessage.contains("timed out while waiting for a dynamic mapping update") ||
                 // In case of fast writes the "current=false" command can be before actually writing the infoton and ES will respond with this error,
                 // so it needs to be retried.
-                itemResponse.getFailureMessage.contains("DocumentMissingException")
+                itemResponse.getFailureMessage.contains("DocumentMissingException") ||
+                // another timeout that should be retried (e.g. put-mapping timeout)
+                itemResponse.getFailureMessage.contains("ProcessClusterEventTimeoutException")
+
           }
           val (versionConflictErrors, unexpectedErrors) = nonRecoverableFailures.partition {
             case (itemResponse, _) =>
@@ -545,7 +548,7 @@ class FTSService(config: Config) extends NsSplitter{
       case err@Failure(exception) =>
         val errorId = err.##
         if (exception.getLocalizedMessage.contains("EsRejectedExecutionException") ||
-          exception.getCause.getMessage.contains("EsRejectedExecutionException")
+          exception.getCause.isInstanceOf[org.elasticsearch.common.util.concurrent.EsRejectedExecutionException]
         ) {
           logger.warn(s"[!$errorId] Elasticsearch rejected execution of current bulk", exception)
           logger.warn(s"[!$errorId] The request was: ${indexRequests.map(_.esAction).mkString("\n")}")
