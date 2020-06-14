@@ -334,8 +334,6 @@ abstract class Host(user: String,
 
   }
 
-  def getEsSize = esSize
-
   def createFile(path: String,
                  content: String,
                  hosts: ParSeq[String] = ips.to(ParSeq),
@@ -2171,79 +2169,6 @@ abstract class Host(user: String,
     //    command(s"""curl -s -X POST 'http://${pingAddress}:$esRegPort/_aliases' -d '$actionsJson'""", ips.head, false)
   }
 
-  def createNewEsIndices: Unit = {
-    info("creating new indices")
-    val numberOfShards = getEsSize
-    val numberOfReplicas = 2
-
-    val settingsJson =
-      s"""
-         |{
-         |    "settings" : {
-         |        "index" : {
-         |            "number_of_shards" : $numberOfShards,
-         |            "number_of_replicas" : $numberOfReplicas
-         |        }
-         |    }
-         |}
-      """.stripMargin
-
-    val json = command(s""" curl -s http://${ips.head}:9000/health/es""").get
-
-    val (currents, histories) = JSON
-      .parseFull(json.trim)
-      .get
-      .asInstanceOf[Map[String, Any]]("indices")
-      .asInstanceOf[Map[String, Any]]
-      .keySet
-      .partition {
-        _.contains("current")
-      }
-
-    val currentIndex = currents.map(_.split("_")(2).toInt).max
-    val historyIndex = histories.map(_.split("_")(2).toInt).max
-
-    val newCurrentIndex = s"cmwell_current_${currentIndex + 1}"
-    val newHistoryIndex = s"cmwell_history_${historyIndex + 1}"
-
-    val oldCurrentIndex = s"cmwell_current_$currentIndex"
-    val oldHistoryIndex = s"cmwell_history_$historyIndex"
-
-    command(s"""curl -s -XPUT 'http://${pingAddress}:$esRegPort/$newCurrentIndex/' -d '$settingsJson'""",
-      ips.head,
-      false)
-    command(s"""curl -s -XPUT 'http://${pingAddress}:$esRegPort/$newHistoryIndex/' -d '$settingsJson'""",
-      ips.head,
-      false)
-
-    val actionsJson =
-      s"""
-         |{
-         |    "actions" : [
-         |        {
-         |           "add" : { "index" : "$newCurrentIndex", "alias" : "cmwell_current" }
-         |        },
-         |        {
-         |           "add" : { "index" : "$newCurrentIndex", "alias" : "cmwell_current_latest" }
-         |        },
-         |        {
-         |           "add" : { "index" : "$newHistoryIndex", "alias" : "cmwell_history" }
-         |        },
-         |        {
-         |           "add" : { "index" : "$newHistoryIndex", "alias" : "cmwell_history_latest" }
-         |        },
-         |        {
-         |           "remove" : { "index" : "$oldCurrentIndex", "alias" : "cmwell_current_latest" }
-         |        },
-         |        {
-         |           "remove" : { "index" : "$oldHistoryIndex", "alias" : "cmwell_history_latest" }
-         |        }
-         |    ]
-         |}
-      """.stripMargin
-
-    command(s"""curl -s -X POST 'http://${pingAddress}:$esRegPort/_aliases' -d '$actionsJson'""", ips.head, false)
-  }
 
   def restartApp = {
     stopCtrl

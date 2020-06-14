@@ -178,9 +178,9 @@ class BGMonitorActor(zkServers: String,
                     redSince.putIfAbsent(key, currentTime)
                   case Some(since) if ((currentTime - since) > 15 * 60 * 1000) =>
                     logger.error(
-                      s"BG status for partition ${key} is RED for more than 15 minutes. sending it an exit message"
+                      s"BG status for partition ${key} is RED for more than 15 minutes. (DISABLED - NOT sending it an exit message)"
                     )
-                    Grid.serviceRef(s"BGActor${partitionInfo.partition}") ! ExitWithError
+//                    Grid.serviceRef(s"BGActor${partitionInfo.partition}") ! ExitWithError
                     redSince.replace(key, currentTime)
                   case Some(since) =>
                     logger.warn(
