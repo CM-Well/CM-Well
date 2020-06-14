@@ -20,16 +20,17 @@ import akka.http.scaladsl.Http
 import akka.http.scaladsl.coding.Gzip
 import akka.http.scaladsl.model.headers.{HttpEncodings, `Accept-Encoding`, `Content-Encoding`}
 import akka.http.scaladsl.model.{ContentTypes, _}
+import akka.http.scaladsl.settings.ConnectionPoolSettings
 import akka.stream.Supervision.Decider
 import akka.stream.contrib.Retry
 import akka.stream.scaladsl.{Flow, Framing, Source}
 import akka.stream.{ActorAttributes, Materializer}
 import akka.util.{ByteString, ByteStringBuilder}
 import cmwell.dc.Settings._
-import cmwell.dc.stream.InfotonRetriever.RetrieveOutput
 import cmwell.dc.stream.MessagesTypesAndExceptions._
 import cmwell.dc.{LazyLogging, Settings}
 import cmwell.util.akka.http.HttpZipDecoder
+import com.typesafe.config.ConfigFactory
 
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -92,6 +93,19 @@ object InfotonRetriever extends LazyLogging {
   ], scala.collection.immutable.Seq[InfotonData], NotUsed] = {
     val remoteUri = "http://" + dcKey.location
     val checkResponse = checkResponseCreator(dcKey, decider) _
+    val poolConfig = ConfigFactory
+      .parseString("akka.http.host-connection-pool.max-connections=1")
+      .withFallback(config)
+    val (host, port) = dcKey.location.split(':') match {
+      case Array(host) => host -> 80
+      case Array(host, port) => host -> port.toInt
+    }
+    val connPool = Http()
+      .newHostConnectionPool[RetrieveState](
+        host,
+        port,
+        ConnectionPoolSettings(poolConfig)
+      )
     val retrieveFlow: Flow[(Future[RetrieveInput], RetrieveState), (Try[RetrieveOutput], RetrieveState), NotUsed] =
       Flow[(Future[RetrieveInput], RetrieveState)]
         .mapAsync(1) { case (input, state) => input.map(_ -> state) }
@@ -102,7 +116,7 @@ object InfotonRetriever extends LazyLogging {
             )
             createRequest(remoteUri, payload) -> state
         }
-        .via(Http().superPool[RetrieveState]())
+        .via(connPool)
         .map {
           case (tryResponse, state) =>
             tryResponse.map(HttpZipDecoder.decodeResponse) -> state
@@ -197,7 +211,7 @@ object InfotonRetriever extends LazyLogging {
     Flow[RetrieveInput]
       .map(input => Future.successful(input) -> (input -> initialRetrieveBulkStatus))
       //todo: discuss with Moria the implication of this
-      .via(Retry.concat(100, Settings.retrieveRetryQueueSize, retrieveFlow)(retryDecider(dcKey)))
+      .via(Retry.concat(1, Settings.retrieveRetryQueueSize, retrieveFlow)(retryDecider(dcKey)))
       .map {
         case (Success(data), _) => data.map(_._1)
         case (Failure(e), _) =>
