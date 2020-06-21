@@ -1,5 +1,5 @@
 /**
-  * Copyright 2015 Thomson Reuters
+  * © 2019 Refinitiv. All Rights Reserved.
   *
   * Licensed under the Apache License, Version 2.0 (the “License”); you may not use this file except in compliance with the License.
   * You may obtain a copy of the License at
@@ -473,7 +473,7 @@ class FTSService(config: Config) extends NsSplitter{
     * @param executionContext
     * @return
     */
-  def executeBulkIndexRequests(indexRequests:Iterable[ESIndexRequest], numOfRetries: Int = 15, waitBetweenRetries:Long = 500)
+  def executeBulkIndexRequests(indexRequests:Iterable[ESIndexRequest], numOfRetries: Int = 30, waitBetweenRetries:Long = 500)
                               (implicit executionContext:ExecutionContext, logger:Logger = loger) : Future[SuccessfulBulkIndexResult] = {
 
     logger.debug(s"indexRequests:$indexRequests")
@@ -489,15 +489,20 @@ class FTSService(config: Config) extends NsSplitter{
         } else {
           val indexedIndexRequests = indexRequests.toIndexedSeq
           val bulkSuccessfulResult =
-            SuccessfulBulkIndexResult.fromSuccessful(indexRequests, bulkResponse.getItems.filter {
-              !_.isFailed
-            })
+            SuccessfulBulkIndexResult.fromSuccessful(indexRequests, bulkResponse.getItems.filter(!_.isFailed))
           val allFailures = bulkResponse.getItems.filter(_.isFailed).map { itemResponse =>
             (itemResponse, indexedIndexRequests(itemResponse.getItemId))
           }
           val (recoverableFailures, nonRecoverableFailures) = allFailures.partition {
             case (itemResponse, _) =>
-              itemResponse.getFailureMessage.contains("EsRejectedExecutionException")
+              itemResponse.getFailureMessage.contains("EsRejectedExecutionException") ||
+                itemResponse.getFailureMessage.contains("timed out while waiting for a dynamic mapping update") ||
+                // In case of fast writes the "current=false" command can be before actually writing the infoton and ES will respond with this error,
+                // so it needs to be retried.
+                itemResponse.getFailureMessage.contains("DocumentMissingException") ||
+                // another timeout that should be retried (e.g. put-mapping timeout)
+                itemResponse.getFailureMessage.contains("ProcessClusterEventTimeoutException")
+
           }
           val (versionConflictErrors, unexpectedErrors) = nonRecoverableFailures.partition {
             case (itemResponse, _) =>
@@ -507,30 +512,30 @@ class FTSService(config: Config) extends NsSplitter{
           versionConflictErrors.foreach { case (itemResponse, esIndexRequest) =>
             val infotonPath = infotonPathFromDocWriteRequest(esIndexRequest.esAction)
             logger.info(s"ElasticSearch non recoverable version conflict failure on doc id:${itemResponse.getId}, path: $infotonPath . " +
-              s"due to: ${itemResponse.getFailureMessage}" + ", can be caused in replay or in parallel writes case")
+              s"due to: ${itemResponse.getFailureMessage}" + ", can be caused in replay or in parallel writes case. " +
+              s"The request was: ${esIndexRequest.esAction}")
           }
           unexpectedErrors.foreach { case (itemResponse, esIndexRequest) =>
             val infotonPath = infotonPathFromDocWriteRequest(esIndexRequest.esAction)
             logger.error(s"ElasticSearch non recoverable failure on doc id:${itemResponse.getId}, path: $infotonPath . " +
-              s"due to: ${itemResponse.getFailureMessage}")
+              s"due to: ${itemResponse.getFailureMessage}. The request was: ${esIndexRequest.esAction}")
           }
           recoverableFailures.foreach { case (itemResponse, esIndexRequest) =>
             val infotonPath = infotonPathFromDocWriteRequest(esIndexRequest.esAction)
-            logger.error(s"ElasticSearch recoverable failure on doc id:${itemResponse.getId}, path: $infotonPath . due to: ${itemResponse.getFailureMessage}")
+            logger.warn(s"ElasticSearch recoverable failure on doc id:${itemResponse.getId}, path: $infotonPath . " +
+              s"due to: ${itemResponse.getFailureMessage}. The request was: ${esIndexRequest.esAction}")
           }
-          val nonRecoverableBulkIndexResults = SuccessfulBulkIndexResult.fromFailed(unexpectedErrors.map {
-            _._1
-          })
+          val nonRecoverableBulkIndexResults = SuccessfulBulkIndexResult.fromFailed(unexpectedErrors.map(_._1))
           val versionConflictBulkIndexResults = createBulkIndexForVersionConflict(versionConflictErrors)
           val reResponse =
-            if(recoverableFailures.length > 0) {
+            if (recoverableFailures.length > 0) {
               //recoverable
               logger.warn(s"will retry recoverable failures after waiting for $waitBetweenRetries milliseconds")
               val updatedIndexRequests = updateIndexRequests(recoverableFailures.map {
                 _._2
               }, new DateTime().getMillis)
               retryRecoverableErrors(numOfRetries, waitBetweenRetries, recoverableFailures, updatedIndexRequests)
-            }else{
+            } else {
               Future(SuccessfulBulkIndexResult(Nil, Nil))
             }
           val res = for {
@@ -540,10 +545,13 @@ class FTSService(config: Config) extends NsSplitter{
           promise.completeWith(res)
         }
 
-      case err @ Failure(exception) =>
+      case err@Failure(exception) =>
         val errorId = err.##
-        if (exception.getLocalizedMessage.contains("EsRejectedExecutionException")) {
+        if (exception.getLocalizedMessage.contains("EsRejectedExecutionException") ||
+          exception.getCause.isInstanceOf[org.elasticsearch.common.util.concurrent.EsRejectedExecutionException]
+        ) {
           logger.warn(s"[!$errorId] Elasticsearch rejected execution of current bulk", exception)
+          logger.warn(s"[!$errorId] The request was: ${indexRequests.map(_.esAction).mkString("\n")}")
           if (numOfRetries > 0) {
             logger.warn(s"[!$errorId] retrying rejected bulk after waiting for $waitBetweenRetries milliseconds")
             val f = SimpleScheduler.scheduleFuture(waitBetweenRetries.milliseconds)(
@@ -555,17 +563,17 @@ class FTSService(config: Config) extends NsSplitter{
             promise.completeWith(f)
           } else {
             logger.error(s"[!$errorId] exhausted all retries attempts. logging failures to RED_LOG ")
+            logger.error(s"[!$errorId] The request was: ${indexRequests.map(_.esAction).mkString("\n")}")
             promise.failure(exception)
           }
         } else {
           logger.error(s"[!$errorId] unexpected Exception from Elasticsearch.", exception)
+          logger.error(s"[!$errorId] The request was: ${indexRequests.map(_.esAction).mkString("\n")}")
           // TODO log to RED_LOG
           promise.failure(exception)
         }
     }
-
     promise.future
-
   }
 
 

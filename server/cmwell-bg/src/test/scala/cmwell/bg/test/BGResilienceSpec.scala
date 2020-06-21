@@ -1,5 +1,5 @@
 /**
-  * Copyright 2015 Thomson Reuters
+  * © 2019 Refinitiv. All Rights Reserved.
   *
   * Licensed under the Apache License, Version 2.0 (the “License”); you may not use this file except in compliance with the License.
   * You may obtain a copy of the License at
@@ -75,7 +75,7 @@ class BGResilienceSpec extends AsyncFlatSpec with BeforeAndAfterAll with BgEsCas
     cmwellBGActor = actorSystem.actorOf(CMWellBGActor.props(0, bgConfig, testIRWMockupService, ftsServiceES, zStore, offsetsService))
   }
 
-  "Resilient BG" should "process commands as usual on circumvented BGActor (periodically failing IRWService) after suspending and resuming" in {
+  ignore /*"Resilient BG"*/ should "process commands as usual on circumvented BGActor (periodically failing IRWService) after suspending and resuming" in {
 
     val numOfCommands = 1500
     // prepare sequence of writeCommands

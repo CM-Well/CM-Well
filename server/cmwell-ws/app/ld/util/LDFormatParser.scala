@@ -1,5 +1,5 @@
 /**
-  * Copyright 2015 Thomson Reuters
+  * © 2019 Refinitiv. All Rights Reserved.
   *
   * Licensed under the Apache License, Version 2.0 (the “License”); you may not use this file except in compliance with the License.
   * You may obtain a copy of the License at
@@ -26,6 +26,7 @@ import cmwell.web.ld.cmw._
 import cmwell.web.ld.exceptions._
 import cmwell.ws.Settings
 import cmwell.common.{Settings => CSettings}
+import cmwell.syntaxutils._
 import com.typesafe.scalalogging.LazyLogging
 import logic.{CRUDServiceFS, InfotonValidator}
 import org.apache.jena.datatypes.xsd.XSDDatatype
@@ -731,6 +732,12 @@ object LDFormatParser extends LazyLogging {
 
               val obj = stmt.getObject
 
+              def isObjNsWildcard: Boolean = {
+                // is obj endsWith "/*" or endsWith "#*" etc., according to the Set[Char] "uriSeparator"
+                val uri = if (obj.isResource) obj.asResource().getURI else obj.toString
+                uri.length > 2 && uri.last == '*' && uriSeparator(uri.init.last)
+              }
+
               predicate match {
                 case Right(fieldName) => {
                   val value = createValueFromObject(obj, subGraph)
@@ -785,6 +792,18 @@ object LDFormatParser extends LazyLogging {
                     case Left(err) => throw new IllegalArgumentException(err)
                   }
                 }
+                case Left(MarkReplace) if isObjNsWildcard =>
+                  // syntactic sugar:
+                  // exploding markReplace command to multiple UpdatePathCommands according to existing fields of this namespace.
+                  // note that not all of them are necessarily required,
+                  // but we cannot tell which one are in use in current version of this Infoton at this point
+                  val namespace = obj.asResource().getURI.init
+                  val relevantPredicatesFut = crudServiceFS.metaNsCache.getAndUpdateIfNeeded.map(_.filter(_.startsWith(namespace)))
+                  //TODO: Await is ugly :( ... but imperative loop with mutable accumulators forces this kind of ugliness
+                  Await.result(relevantPredicatesFut, Duration.Inf).foreach { predicate =>
+                    val fieldName = getCmwellFieldNameForUrl(cmwellRDFHelper, timeContext, predicate).getOrElse(!!!)
+                    updateDeleteMap(deleteFieldsMap, subject, fieldName, subGraph)
+                  }
                 case Left(MarkReplace) => {
                   val cmwellFieldName = {
                     if (!obj.isResource) getCmwellFieldNameForUrl(cmwellRDFHelper, timeContext, obj.toString)

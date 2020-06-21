@@ -1,5 +1,5 @@
 /**
-  * Copyright 2015 Thomson Reuters
+  * © 2019 Refinitiv. All Rights Reserved.
   *
   * Licensed under the Apache License, Version 2.0 (the “License”); you may not use this file except in compliance with the License.
   * You may obtain a copy of the License at
@@ -178,9 +178,9 @@ class BGMonitorActor(zkServers: String,
                     redSince.putIfAbsent(key, currentTime)
                   case Some(since) if ((currentTime - since) > 15 * 60 * 1000) =>
                     logger.error(
-                      s"BG status for partition ${key} is RED for more than 15 minutes. sending it an exit message"
+                      s"BG status for partition ${key} is RED for more than 15 minutes. (DISABLED - NOT sending it an exit message)"
                     )
-                    Grid.serviceRef(s"BGActor${partitionInfo.partition}") ! ExitWithError
+//                    Grid.serviceRef(s"BGActor${partitionInfo.partition}") ! ExitWithError
                     redSince.replace(key, currentTime)
                   case Some(since) =>
                     logger.warn(
