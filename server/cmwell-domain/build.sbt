@@ -1,3 +1,5 @@
+import CMWellBuild.autoImport._
+
 name := "cmwell-domain-ng"
 
 libraryDependencies ++= {
@@ -12,5 +14,6 @@ libraryDependencies ++= {
     dm("org.slf4j", "slf4j-api"),
     dm("org.scalacheck", "scalacheck") % "test",
     dm("org.slf4j", "jcl-over-slf4j"),
-    dm("org.scalacheck","scalacheck") % "domainUtil"),
+    dm("org.scalacheck","scalacheck") % "domainUtil"
+  )
 }

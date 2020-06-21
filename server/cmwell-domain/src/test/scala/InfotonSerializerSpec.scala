@@ -15,7 +15,7 @@
 
 
 import cmwell.domain._
-import domain.testUtil.InfotonGenerator.genericSystemFields
+import cmwell.domain.testUtil.InfotonGenerator.genericSystemFields
 import org.joda.time.DateTime
 import org.scalatest.{FlatSpec, Matchers}
 

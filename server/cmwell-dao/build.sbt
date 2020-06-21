@@ -1,3 +1,5 @@
+import CMWellBuild.autoImport._
+
 name := "cmwell-dao"
 
 libraryDependencies ++= {

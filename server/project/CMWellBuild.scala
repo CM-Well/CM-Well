@@ -12,33 +12,38 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
+import java.io.File
+import java.util.Locale
 
-package cmwell.build
+import CMWellCommon._
 
-import com.github.tkawachi.doctest.DoctestPlugin
 import coursier.cache.Cache
 import coursier.util.Task
-import xerial.sbt.pack.PackPlugin
-//import org.scalafmt.sbt.ScalafmtPlugin
-import org.scalastyle.sbt.ScalastylePlugin
-import sbtdynver.DynVerPlugin
-//import net.virtualvoid.sbt.graph.DependencyGraphPlugin
 import sbt.Keys._
-import sbt._
+import sbt.librarymanagement.{Artifact, ModuleID}
+import sbt.util.Logger
+import sbt.{Keys, Project, SettingKey, Tags, TaskKey, _}
+import sbtdynver.DynVerPlugin
+import xerial.sbt.pack.PackPlugin
 
-import scala.concurrent._
-import scala.util.{Failure, Success, Try}
+import scala.concurrent.{ExecutionContext, Future}
+import scala.util.{Failure, Success}
 
-object CMWellBuild extends AutoPlugin {
+object OSType extends Enumeration {
+	type OSType = Value
+	val Windows, MacOS, Linux, Other = Value
+}
 
-	type PartialFunction2[-T1,-T2,+R] = PartialFunction[Tuple2[T1,T2],R]
+object CMWellBuild {
+
+	type PartialFunction2[-T1, -T2, +R] = PartialFunction[Tuple2[T1, T2], R]
 
 	object autoImport {
-//  val configSettingsResource = TaskKey[Seq[sbt.File]]("config-settings-resource", "gets the .conf resource")
-		val dependenciesManager = settingKey[PartialFunction2[String, String, ModuleID]]("a setting containing versions for dependencies. if we only use it to declare " +
+		//  val configSettingsResource = TaskKey[Seq[sbt.File]]("config-settings-resource", "gets the .conf resource")
+		val dependenciesManager = SettingKey[PartialFunction2[String, String, ModuleID]]("a setting containing versions for dependencies. if we only use it to declare " +
 			"dependencies, we can avoid a lot of version collisions.")
 		// scalastyle:off
-    val iTestsLightMode = settingKey[Boolean]("a flag, which if turns on, does not take cm-well down after integration tests, but rather purge everything in it, so it will be ready for next time. on startup, it checks if there is an instance running, and if so, does not re-install cm-well.")
+		val iTestsLightMode = SettingKey[Boolean]("a flag, which if turns on, does not take cm-well down after integration tests, but rather purge everything in it, so it will be ready for next time. on startup, it checks if there is an instance running, and if so, does not re-install cm-well.")
 		// scalastyle:on
 		val peScript = TaskKey[sbt.File]("pe-script", "returns the script that executes cmwell in PE mode.")
 		val uploadInitContent = TaskKey[sbt.File]("upload-init-content", "returns the script that uploads the initial content in to PE Cm-Well.")
@@ -57,26 +62,21 @@ object CMWellBuild extends AutoPlugin {
 		val fullTest = TaskKey[Unit]("fullTest", "executes all tests in project in parallel (with respect to dependent tests)")
 		val getData = TaskKey[Seq[java.io.File]]("get-data", "get data to upload to cm-well")
 		val getExternalComponents = TaskKey[Iterable[File]]("get-external-components", "get external dependencies binaries")
-		val testScalastyle = taskKey[Unit]("testScalastyle")
-		val itScalastyle = taskKey[Unit]("itScalastyle")
-		val compileScalastyle = taskKey[Unit]("compileScalastyle")
-		val versionCheck = taskKey[Unit]("test dyn version task")
+		val versionCheck = TaskKey[Unit]("test dyn version task")
 	}
 
 	import autoImport._
-	import DoctestPlugin.autoImport._
-//import ScalafmtPlugin.autoImport._
-	import ScalastylePlugin.autoImport._
 	import DynVerPlugin.autoImport._
-
-
 	lazy val apacheMirror = {
-    val zoneID = java.util.TimeZone
-      .getDefault()
-      .getID
-    if(zoneID.startsWith("America") || zoneID.startsWith("Pacific") || zoneID.startsWith("Etc")) "us"
+		val zoneID = java.util.TimeZone
+			.getDefault()
+			.getID
+		if (zoneID.startsWith("America") || zoneID.startsWith("Pacific") || zoneID.startsWith("Etc")) "us"
 		else "eu"
-  }
+	}
+	var detectedOS: OSType.Value = getOperatingSystemType
+
+
 
 	def fetchZookeeperApacheMirror(version: String)(implicit ec: ExecutionContext): Future[File] = {
 		val ext = "tar.gz"
@@ -95,14 +95,13 @@ object CMWellBuild extends AutoPlugin {
 		alternateUnvalidatedFetchArtifact(s"https://github.com/apache/zookeeper/archive/release-$version.$ext", ext)
 	}
 
-	def fetchZookeeper(version: String, buildFromSources: Option[(String,File => Future[File])] = None) = {
+	def fetchZookeeper(version: String, buildFromSources: Option[(String, File => Future[File])] = None) = {
 		import scala.concurrent.ExecutionContext.Implicits.global
-		import CMWellCommon.combineThrowablesAsCauseAsync
 
 		fetchZookeeperApacheMirror(version).recoverWith {
 			case err1: Throwable => fetchZookeeperApacheArchive(version).recoverWith {
 				case err2: Throwable => {
-					buildFromSources.fold(combineThrowablesAsCauseAsync[File](err1, err2){ cause =>
+					buildFromSources.fold(combineThrowablesAsCauseAsync[File](err1, err2) { cause =>
 						new Exception("was unable to fetch zookeeper binaries, and build from sources function isn't supplied", cause)
 					}) {
 						case (ext, build) => fetchZookeeperSourcesFromGithub(version, ext).flatMap(build)
@@ -112,15 +111,25 @@ object CMWellBuild extends AutoPlugin {
 		}
 	}
 
+	def combineThrowablesAsCauseAsync[T](t1: Throwable, t2: Throwable)(f: Throwable => Throwable): Future[T] =
+		Future.failed[T](combineThrowablesAsCause(t1, t2)(f))
+
+	def combineThrowablesAsCause(t1: Throwable, t2: Throwable)(f: Throwable => Throwable): Throwable =
+		f(Option(t1.getCause).fold(t1.initCause(t2)) { _ =>
+			Option(t2.getCause).fold(t2.initCause(t1)) { _ =>
+				t2
+			}
+		})
+
 	def fetchKafkaApacheMirror(scalaVersion: String, version: String)(implicit ec: ExecutionContext): Future[File] = {
 		val ext = "tgz"
-    val url = s"http://www-$apacheMirror.apache.org/dist/kafka/$version/kafka_$scalaVersion-$version.$ext"
+		val url = s"http://www-$apacheMirror.apache.org/dist/kafka/$version/kafka_$scalaVersion-$version.$ext"
 		fetchArtifact(url)
 	}
 
 	def fetchKafkaApacheArchive(scalaVersion: String, version: String)(implicit ec: ExecutionContext): Future[File] = {
 		val ext = "tgz"
-    val url = s"https://archive.apache.org/dist/kafka/$version/kafka_$scalaVersion-$version.$ext"
+		val url = s"https://archive.apache.org/dist/kafka/$version/kafka_$scalaVersion-$version.$ext"
 		fetchArtifact(url)
 	}
 
@@ -129,9 +138,8 @@ object CMWellBuild extends AutoPlugin {
 		alternateUnvalidatedFetchArtifact(s"https://github.com/apache/kafka/archive/$version.$ext", ext)
 	}
 
-  def fetchKafka(scalaVersion: String, version: String, buildFromSources: Option[(String,File => Future[File])] = None) = {
+	def fetchKafka(scalaVersion: String, version: String, buildFromSources: Option[(String, File => Future[File])] = None) = {
 		import scala.concurrent.ExecutionContext.Implicits.global
-		import CMWellCommon.combineThrowablesAsCauseAsync
 
 		fetchKafkaApacheMirror(scalaVersion, version).recoverWith {
 			case err1: Throwable => fetchKafkaApacheArchive(scalaVersion, version).recoverWith {
@@ -147,16 +155,16 @@ object CMWellBuild extends AutoPlugin {
 	}
 
 	def fetchCassandraApacheMirror(version: String, fileName: String)(implicit ec: ExecutionContext): Future[File] = {
-    val url = s"http://www-$apacheMirror.apache.org/dist/cassandra/$version/$fileName"
+		val url = s"http://www-$apacheMirror.apache.org/dist/cassandra/$version/$fileName"
 		fetchArtifact(url)
 	}
 
 	def fetchCassandraApacheArchive(version: String, fileName: String)(implicit ec: ExecutionContext): Future[File] = {
-    val url = s"https://archive.apache.org/dist/cassandra/$version/$fileName"
+		val url = s"https://archive.apache.org/dist/cassandra/$version/$fileName"
 		fetchArtifact(url)
 	}
 
-  def fetchCassandra(version: String, logger: Logger)(implicit ec: ExecutionContext): Future[(String, File)] = {
+	def fetchCassandra(version: String, logger: Logger)(implicit ec: ExecutionContext): Future[(String, File)] = {
 		val ext = "tar.gz"
 		val fileName = s"apache-cassandra-$version-bin.$ext"
 		fetchCassandraApacheMirror(version, fileName).recoverWith {
@@ -169,7 +177,7 @@ object CMWellBuild extends AutoPlugin {
 
 	def fetchElasticSearch(version: String)(implicit ec: ExecutionContext): Future[(String, File)] = {
 		val ext = "tar.gz"
-		val osType = OsCheck.getOperatingSystemType match {
+		val osType = getOperatingSystemType match {
 			case OSType.Linux => "linux"
 			case OSType.MacOS => "darwin"
 			case other => throw new Exception(s"Operating system $other is not supported")
@@ -203,7 +211,7 @@ object CMWellBuild extends AutoPlugin {
 			optional = false,
 			None)
 
-		val checksums = Seq(Some("MD5"),Some("SHA-1"),Some("SHA-256"),Some("SHA-512"), None)
+		val checksums = Seq(Some("MD5"), Some("SHA-1"), Some("SHA-256"), Some("SHA-512"), None)
 		val fileCache: Cache[Task] = coursier.cache.FileCache().withChecksums(checksums)
 		fileCache.file(art).run.future.transform {
 			case Success(Left(artifactError)) => Failure(new Exception(artifactError.message + ": " + artifactError.describe))
@@ -230,24 +238,35 @@ object CMWellBuild extends AutoPlugin {
 		}
 	}
 
-	override def requires = PackPlugin && ScalastylePlugin /*&& ScalafmtPlugin*/ && DoctestPlugin /*&& DependencyGraphPlugin*/
+	/**
+		* detect the operating system from the os.name System property and cache
+		* the result
+		*
+		* @returns - the operating system detected
+		*/
+	def getOperatingSystemType: OSType.Value = {
+		if (detectedOS == null) {
+			val OS = System.getProperty("os.name", "generic").toLowerCase(Locale.ENGLISH)
+			if (OS.contains("mac") || OS.contains("darwin")) detectedOS = OSType.MacOS
+			else if (OS.contains("win")) detectedOS = OSType.Windows
+			else if (OS.contains("nux")) detectedOS = OSType.Linux
+			else detectedOS = OSType.Other
+		}
 
-	override def projectSettings = Seq(
-		scalastyleFailOnError := false,
-		testScalastyle in ThisProject := (scalastyle in ThisProject).in(Test).toTask("").value,
-		(test in Test) := ((test in Test) dependsOn testScalastyle).value,
-		compileScalastyle in ThisProject := (scalastyle in ThisProject).in(Compile).toTask("").value,
-		(compile in Compile) := ((compile in Compile) dependsOn compileScalastyle).value,
+		detectedOS
+	}
+
+
+	def projectSettings = Seq(
 		(compile in Compile) := ((compile in Compile) dependsOn versionCheck).value,
-		logLevel in (scalastyle in Compile) := Level.Warn,
 		//scalafmtOnCompile := true,
 		//doctestWithDependencies := false,
 		Keys.fork in Test := true,
 		libraryDependencies ++= {
 			val dm = dependenciesManager.value
 			Seq(
-				dm("org.scalatest","scalatest") % "test",
-				dm("org.scalacheck","scalacheck") % "test")
+				dm("org.scalatest", "scalatest") % "test",
+				dm("org.scalacheck", "scalacheck") % "test")
 		},
 		versionCheck := {
 			val dynamicVersion = dynver.value
@@ -257,7 +276,7 @@ object CMWellBuild extends AutoPlugin {
 					s"Please use the refreshVersion command to refresh the setting.")
 		},
 		testListeners := Seq(new sbt.JUnitXmlTestsListener(target.value.getAbsolutePath)),
-		doctestTestFramework := DoctestTestFramework.ScalaTest,
+		//		doctestTestFramework := DoctestTestFramework.ScalaTest,
 		exportJars := true,
 		shellPrompt := { s => Project.extract(s).currentProject.id + " > " },
 		fullTest := {},
@@ -266,11 +285,11 @@ object CMWellBuild extends AutoPlugin {
 			packagedArtifacts.value
 		},
 		concurrentRestrictions in ThisBuild ++= Seq(
-			Tags.limit(CMWellCommon.Tags.ES, 1),
-			Tags.limit(CMWellCommon.Tags.Cassandra, 1),
-			Tags.limit(CMWellCommon.Tags.Kafka, 1),
-			Tags.limit(CMWellCommon.Tags.Grid, 1),
-			Tags.exclusive(CMWellCommon.Tags.IntegrationTests)
+			Tags.limit(CommonTags.ES, 1),
+			Tags.limit(CommonTags.Cassandra, 1),
+			Tags.limit(CommonTags.Kafka, 1),
+			Tags.limit(CommonTags.Grid, 1),
+			Tags.exclusive(CommonTags.IntegrationTests)
 		)
 	)
 }
