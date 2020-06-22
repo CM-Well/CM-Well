@@ -15,7 +15,10 @@
 package cmwell.util.string
 
 import java.nio.charset.StandardCharsets
+import java.security.MessageDigest
+
 import cmwell.util.numeric._
+
 import scala.annotation.tailrec
 import net.jpountz.xxhash._
 
@@ -112,10 +115,10 @@ object Hash {
     hashToBase64(s)(xxhash64)(toLongBytes)
 
   def md5(s: String): String = md5(s.getBytes(StandardCharsets.UTF_8))
-  def md5(d: Array[Byte]): String = md5Func(d)
+  def md5(d: Array[Byte]): String = toHexString(MessageDigest.getInstance("md5").digest(d))
 
   def sha1(s: String): String = sha1(s.getBytes(StandardCharsets.UTF_8))
-  def sha1(d: Array[Byte]): String = sha1Func(d)
+  def sha1(d: Array[Byte]): String = toHexString(MessageDigest.getInstance("sha1").digest(d))
 
   def xxhash32(str: String): Long = xxhash32(str.getBytes(StandardCharsets.UTF_8))
   def xxhash32(arr: Array[Byte]): Long = {
@@ -126,10 +129,8 @@ object Hash {
   def xxhash64(str: String): Long = xxhash64(str.getBytes(StandardCharsets.UTF_8))
   def xxhash64(arr: Array[Byte]): Long = xxhashFactory.hash64().hash(arr, 0, arr.length, 786)
 
-  private lazy val xxhashFactory = XXHashFactory.fastestJavaInstance()
-  private val md5Func = msgDigester("md5")
-  private val sha1Func = msgDigester("sha1")
+  def toHexString(byteArray: Array[Byte]) = byteArray.map("%02x".format(_)).mkString
 
-  private def msgDigester(alg: String): (Array[Byte]) => String =
-    (d: Array[Byte]) => java.security.MessageDigest.getInstance(alg).digest(d).map("%02x".format(_)).mkString
+  private lazy val xxhashFactory = XXHashFactory.fastestJavaInstance()
+
 }
