@@ -321,7 +321,7 @@ object CrawlerStream extends LazyLogging {
         }
         val path = errOrFix.lclzdCmd.cmd.path.getBytes("UTF-8")
         val msg = Json.stringify(Json.obj("details" -> errOrFix.details, "origin" -> origin, "command" -> command)).getBytes("UTF-8")
-        new ProducerRecord[Array[Byte], Array[Byte]]("red_queue", partition, path, msg)
+        new ProducerRecord[Array[Byte], Array[Byte]]("red_queue", 0, path, msg)
       }
 
       def kafkaProduce(pRecord: ProducerRecord[Array[Byte],Array[Byte]]): Future[RecordMetadata] = {
