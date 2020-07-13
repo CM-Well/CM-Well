@@ -312,8 +312,7 @@ case class KafkaConf(home: String, logDirs: Seq[String], zookeeperServers: Seq[S
          |$exports
           |$CHKSTRT
           |$BMSG
-          |starter java -Xmx1G -Xms1G -server -XX:+UseG1GC -XX:MaxGCPauseMillis=20 -XX:InitiatingHeapOccupancyPercent=35 -XX:+DisableExplicitGC -Djava.awt.headless=true -Xloggc:$home/log/$dir/kafkaServer-gc.log -verbose:gc -XX:+PrintGCDetails -XX:+PrintGCDateStamps -XX:+PrintGCTimeStamps -Dcom.sun.management.jmxremote.port=${PortManagers.kafka.jmxPortManager
-           .getPort(1)} -Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false -Dkafka.logs.dir=$home/log/$dir -Dlog4j.configuration=file:$home/conf/$dir/log4j.properties -cp $cp kafka.Kafka $home/conf/$dir/server.properties  > $home/log/$dir/stdout.log 2>  $home/log/$dir/stderr.log &
+          |starter java -Xmx1G -Xms1G -server -XX:+UseG1GC -XX:MaxGCPauseMillis=20 -XX:InitiatingHeapOccupancyPercent=35 -XX:+DisableExplicitGC -Djava.awt.headless=true -Xloggc:$home/log/$dir/kafkaServer-gc.log -verbose:gc -XX:+PrintGCDetails -XX:+PrintGCDateStamps -XX:+PrintGCTimeStamps -Dcom.sun.management.jmxremote.port=${PortManagers.kafka.jmxPortManager.getPort(1)} -Dcom.sun.management.jmxremote.rmi.port=${PortManagers.kafka.jmxPortManager.getPort(1)} -Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false -Dkafka.logs.dir=$home/log/$dir -Dlog4j.configuration=file:$home/conf/$dir/log4j.properties -cp $cp kafka.Kafka $home/conf/$dir/server.properties  > $home/log/$dir/stdout.log 2>  $home/log/$dir/stderr.log &
      """.stripMargin
     // scalastyle:on
     ConfFile("start.sh", scriptString, true)
@@ -417,6 +416,7 @@ case class BgConf(home: String,
       val mXss = resourceManager.getMxss
       val jmx = Seq(
         s"-Dcom.sun.management.jmxremote.port=${PortManagers.bg.jmxPortManager.getPort(1)}",
+        s"-Dcom.sun.management.jmxremote.rmi.port=${PortManagers.bg.jmxPortManager.getPort(1)}",
         "-XX:-OmitStackTraceInFastThrow",
         "-XX:+UseG1GC",
         "-Dcom.sun.management.jmxremote.ssl=false",
@@ -523,6 +523,7 @@ case class CwConf(home: String,
           "-XX:ReservedCodeCacheSize=128m",
           "-Dfile.encoding=UTF-8",
           s"-Dcom.sun.management.jmxremote.port=${PortManagers.ws.jmxPortManager.getPort(2)}",
+          s"-Dcom.sun.management.jmxremote.rmi.port=${PortManagers.ws.jmxPortManager.getPort(2)}",
           "-Dcom.sun.management.jmxremote.ssl=false",
           "-Dcom.sun.management.jmxremote.authenticate=false",
           "-Duser.timezone=GMT0",
@@ -620,6 +621,7 @@ case class WebConf(home: String,
         "-XX:ReservedCodeCacheSize=128m",
         auth,
         s"-Dcom.sun.management.jmxremote.port=${PortManagers.ws.jmxPortManager.getPort(1)}",
+        s"-Dcom.sun.management.jmxremote.rmi.port=${PortManagers.ws.jmxPortManager.getPort(1)}",
         "-Dcom.sun.management.jmxremote.ssl=false",
         "-Dcom.sun.management.jmxremote.authenticate=false",
         "-Des.set.netty.runtime.available.processors=false",
@@ -709,6 +711,7 @@ case class CtrlConf(home: String,
       "-XX:+UseG1GC",
       "-Dfile.encoding=UTF-8",
       s"-Dcom.sun.management.jmxremote.port=${PortManagers.ctrl.jmxPortManager.getPort(1)}",
+      s"-Dcom.sun.management.jmxremote.rmi.port=${PortManagers.ctrl.jmxPortManager.getPort(1)}",
       s"-Dcmwell.home=$home",
       s"-Dlog.level=$logLevel",
       "-Duser.timezone=GMT0",
@@ -777,6 +780,7 @@ case class DcConf(home: String,
       "-XX:+UseG1GC",
       "-Dfile.encoding=UTF-8",
       s"-Dcom.sun.management.jmxremote.port=${PortManagers.dc.jmxPortManager.getPort(1)}",
+      s"-Dcom.sun.management.jmxremote.rmi.port=${PortManagers.dc.jmxPortManager.getPort(1)}",
       "-Duser.timezone=GMT0",
       /*"-Dcom.sun.management.jmxremote.port=6789",*/
       "-Dcom.sun.management.jmxremote.authenticate=false",
