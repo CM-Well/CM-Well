@@ -19,17 +19,12 @@ import akka.actor.ActorSystem
 import akka.http.scaladsl.model.{HttpEntity, HttpResponse}
 import akka.stream.Supervision._
 import akka.stream._
-import akka.stream.contrib.Retry
+import akka.stream.contrib.{BufferLimiter, Retry}
 import akka.stream.scaladsl.{Flow, GraphDSL, Keep, Merge, Partition, Sink}
 import akka.util.ByteString
 import cmwell.dc.{LazyLogging, Settings}
 import cmwell.dc.stream.MessagesTypesAndExceptions._
-import cmwell.dc.stream.SingleMachineInfotonIngester.{
-  IngestInput,
-  IngestOutput,
-  IngestState,
-  IngestStateStatus
-}
+import cmwell.dc.stream.SingleMachineInfotonIngester.{IngestInput, IngestOutput, IngestState, IngestStateStatus}
 
 import scala.concurrent.Future
 import scala.util.{Failure, Success, Try}
@@ -78,8 +73,7 @@ object InfotonAllMachinesDistributerAndIngester extends LazyLogging {
             )
           )
           val ingestRetrier =
-            //todo: discuss with Moria the implication of this
-            Retry.concat(100, Settings.ingestRetryQueueSize, ingestFlow)(
+            Retry.concat(Settings.ingestRetryQueueSize, 1, BufferLimiter(1, ingestFlow))(
               retryDecider(dckey, location)
             )
           o ~> infotonAggregator ~> initialStateAdder ~> ingestRetrier ~> mergeIngests

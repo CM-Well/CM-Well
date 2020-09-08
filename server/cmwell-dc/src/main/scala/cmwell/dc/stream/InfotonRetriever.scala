@@ -21,7 +21,7 @@ import akka.http.scaladsl.coding.Gzip
 import akka.http.scaladsl.model.headers.{HttpEncodings, `Accept-Encoding`, `Content-Encoding`}
 import akka.http.scaladsl.model.{ContentTypes, _}
 import akka.stream.Supervision.Decider
-import akka.stream.contrib.Retry
+import akka.stream.contrib.{BufferLimiter, Retry}
 import akka.stream.scaladsl.{Flow, Framing, Source}
 import akka.stream.{ActorAttributes, Materializer}
 import akka.util.{ByteString, ByteStringBuilder}
@@ -196,8 +196,7 @@ object InfotonRetriever extends LazyLogging {
 
     Flow[RetrieveInput]
       .map(input => Future.successful(input) -> (input -> initialRetrieveBulkStatus))
-      //todo: discuss with Moria the implication of this
-      .via(Retry.concat(100, Settings.retrieveRetryQueueSize, retrieveFlow)(retryDecider(dcKey)))
+      .via(Retry.concat(Settings.retrieveRetryQueueSize, 1, BufferLimiter(1, retrieveFlow))(retryDecider(dcKey)))
       .map {
         case (Success(data), _) => data.map(_._1)
         case (Failure(e), _) =>

@@ -51,7 +51,9 @@ libraryDependencies ++= {
 		dm("org.apache.jena", "apache-jena-libs")
 			.exclude("commons-logging", "commons-logging")
 			.exclude("org.slf4j", "slf4j-log4j12")
-			.exclude("log4j", "log4j")
+			.exclude("log4j", "log4j"),
+		dm("com.typesafe.akka", "akka-stream-testkit") % "test",
+		dm("org.scalatest", "scalatest") % "test"
 	)
 }
 
@@ -83,4 +85,4 @@ val jvmOptsForDcStandAloneUsingNativePackager = Seq(
 )
 javaOptions in Universal ++= jvmOptsForDcStandAloneUsingNativePackager
 
-unmanagedResources in Test += packResourceDir.value.keys.head / "application.conf"
+//unmanagedResources in Test += packResourceDir.value.keys.head / "application.conf"
