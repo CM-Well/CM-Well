@@ -5,7 +5,7 @@ import scala.sys.process._
 
 name := "cmwell-it"
 
-//Defaults.itSettings
+sbt.Defaults.itSettings
 
 libraryDependencies ++= {
   val dm = dependenciesManager.value
@@ -120,9 +120,7 @@ testOptions in IntegrationTest ++= {
 
 itScalastyle in ThisProject := (scalastyle in ThisProject).in(IntegrationTest).toTask("").value
 
-/*
 test in IntegrationTest := Def.task {
   itScalastyle.value
   (test in IntegrationTest).value
 }.tag(Tags.ES,Tags.Cassandra,Tags.Kafka,Tags.Grid).value
-*/
