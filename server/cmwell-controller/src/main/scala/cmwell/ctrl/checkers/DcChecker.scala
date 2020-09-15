@@ -91,12 +91,14 @@ object DcChecker extends Checker with RestarterChecker with LazyLogging {
   override def restartAfter: FiniteDuration = 30.minutes
 
   override def doRestart: Unit = {
-    logger.info(s"Restarting DataCenterSyncManager since it failed for ${restartAfter.toString}")
+    logger.info(s"DISABLED! - NOT Restarting DataCenterSyncManager since it failed for ${restartAfter.toString}")
     // todo: Do this instead of killing the whole jvm.
     //Grid.singletonRef("DataCenterSyncManager") ! KillSingleton
+/*
     LocalServiceManager
       .mapping("DataCenterSyncManager")
       .map(jvm => Grid.selectActor(ClientActor.name, jvm) ! RestartJvm)
+*/
   }
 
   private def transform(transformations: List[String], str: String): String = {
