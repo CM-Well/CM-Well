@@ -600,8 +600,10 @@ class DataCenterSyncManager(dstServersVec: Vector[(String, Option[Int])],
     logger.info(s"Getting last synced index time from data for: $dcKey")
     val (h, p) = randomFrom(dstServersVec)
     val dst = p.fold(h)(h + ":" + _)
+    //remove the type-prefix from the search (it was added as part of the DDPC feature)
+    val dcIdWithoutType = dcKey.id.replaceFirst("&type=[^?]+", "")
+    val transformedId = Util.transform(dcKey.transformations.toList, dcIdWithoutType)
     //The below request supports qp also (the qp it the last part of the ID and will be sent to the local server)
-    val transformedId = Util.transform(dcKey.transformations.toList, dcKey.id)
     val requestUri = s"http://$dst/proc/dc/$transformedId${if (transformedId.contains("?")) "&" else "?"}format=json"
     logger.info(s"Requesting last index time for: $dcKey. Request URI: $requestUri")
     val request = HttpRequest(uri = requestUri) -> ProcDcViewer
