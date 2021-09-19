@@ -17,13 +17,14 @@ package cmwell.bg
 import akka.Done
 import akka.stream.scaladsl.{Flow, Keep, Sink}
 import cmwell.common.OffsetsService
-import cmwell.common.formats.{CompleteOffset, Offset}
+import cmwell.common.formats.{CompleteOffset, Offset, PartialOffset}
 import com.typesafe.scalalogging.LazyLogging
 import org.apache.kafka.common.TopicPartition
 
 import scala.concurrent.duration.DurationInt
 import scala.concurrent.{ExecutionContext, Future}
 import scala.collection.JavaConverters._
+import scala.collection.View
 
 object OffsetUtils extends LazyLogging {
 
@@ -122,7 +123,9 @@ object OffsetUtils extends LazyLogging {
     logger.debug(
       s"commit offset sink of $streamId: doneOffsets after adding all completed new offsets:\n$doneOffsets"
     )
-    partialOffsets.groupBy(_.offset).foreach {
+    //In case of a fast retries there can be the same partial offset several times in the same group. This is the reason "distinctOffset" was added.
+    //The distinctOffsets function is called after the groupBy operation hence it's ok to use n^2 operation over such a small sequence.
+    partialOffsets.groupBy(_.offset).map( tuple => tuple._1 -> distinctOffsets(tuple._2)).foreach {
       case (_, o) =>
         logger.debug(s"commit offset sink of $streamId: handling new partial offset: $o")
         if (o.size == 2) {
@@ -147,6 +150,13 @@ object OffsetUtils extends LazyLogging {
     logger.debug(
       s"commit offset sink of $streamId: doneOffsets after adding partial new offsets:\n $doneOffsets"
     )
+  }
+
+  //The hashcode and equals of Offset are overridden and only offset is used. Here we want to do distinct over the whole type.
+  //NOTE: This function complexity is n^2 but the use case of it is for sequences with average of 1 or 2 elements and sometimes 3.
+  //The fastest and easiest way to implement it is using this function and not using sophisticated hash tables.
+  private def distinctOffsets(offsets: Seq[Offset]): Seq[Offset] = {
+    offsets.foldLeft(Seq.empty[Offset]) ((result, current) => if (result.exists(_.reallyEquals(current))) result else result :+ current)
   }
 
   def getOffsetBoundries(bootStrapServers: String, topicPartition: TopicPartition): (Long, Long) = {
