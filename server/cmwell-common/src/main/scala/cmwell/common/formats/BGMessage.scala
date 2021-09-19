@@ -33,6 +33,13 @@ sealed abstract class Offset(val topic: String,
     obj.isInstanceOf[Offset]     &&
     obj.asInstanceOf[Offset].offset == offset
   }
+
+  def reallyEquals(other: Offset): Boolean = {
+    topic == other.topic &&
+      offset == other.offset &&
+      part == other.part &&
+      ofParts == other.ofParts
+  }
 }
 // scalastyle:on
 
