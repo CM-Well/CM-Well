@@ -52,10 +52,9 @@ object OffsetUtils extends LazyLogging {
               val it = doneOffsets.iterator()
               while ( {
                 val next = if (it.hasNext) Some(it.next) else None
-                val continue =
-                  next.fold(false)(
-                    o => o.isInstanceOf[CompleteOffset] && o.offset - prev == 1
-                  )
+                //In case of a retry of an offset after it was already persisted, it will be in the doneOffsets structure but it will never be deleted.
+                //This is the reason of the extra check (o.offset <= lastOffsetPersisted) - to make sure all those offsets will be deleted.
+                val continue = next.fold(false)(o => o.offset <= lastOffsetPersisted || o.isInstanceOf[CompleteOffset] && o.offset - prev == 1)
                 if (continue)
                   prev = next.get.offset
                 continue
