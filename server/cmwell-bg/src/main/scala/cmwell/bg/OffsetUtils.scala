@@ -49,13 +49,14 @@ object OffsetUtils extends LazyLogging {
             val offsetToPersist = if (offsets.nonEmpty) {
               var prev = lastOffsetPersisted
               mergeOffsets(streamId, doneOffsets, offsets)
+              //In case of a retry of an offset after it was already persisted, it should be removed before calculating the new offset to persist.
+              val oldsIt = doneOffsets.iterator()
+              while (oldsIt.hasNext && oldsIt.next.offset <= lastOffsetPersisted)
+                oldsIt.remove()
               val it = doneOffsets.iterator()
               while ( {
                 val next = if (it.hasNext) Some(it.next) else None
-                val continue =
-                  next.fold(false)(
-                    o => o.isInstanceOf[CompleteOffset] && o.offset - prev == 1
-                  )
+                val continue = next.fold(false)(o => o.isInstanceOf[CompleteOffset] && o.offset - prev == 1)
                 if (continue)
                   prev = next.get.offset
                 continue
@@ -73,6 +74,10 @@ object OffsetUtils extends LazyLogging {
             val offsetPriorityToPersist = if (offsetsPriority.nonEmpty) {
               var prevPriority = lastOffsetPersistedPriority
               mergeOffsets(streamId, doneOffsetsPriority, offsetsPriority)
+              //In case of a retry of an offset after it was already persisted, it should be removed before calculating the new offset to persist.
+              val oldsItPriority = doneOffsetsPriority.iterator()
+              while (oldsItPriority.hasNext && oldsItPriority.next.offset <= lastOffsetPersistedPriority)
+                oldsItPriority.remove()
               val itPriority = doneOffsetsPriority.iterator()
               while ( {
                 val next =
