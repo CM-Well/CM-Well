@@ -8,8 +8,8 @@ sbtPlugin := true
 
 addSbtPlugin("com.github.israel" % "sbt-zookeeper-plugin" % "0.2")
 
-sourceGenerators in Compile += task[Seq[File]] {
-  val file =  (sourceManaged in Compile).value / "com" / "github" / "israel" / "sbt" / "kafka" / "BuildUtils.scala"
+Compile / sourceGenerators += task[Seq[File]] {
+  val file =  (Compile / sourceManaged).value / "com" / "github" / "israel" / "sbt" / "kafka" / "BuildUtils.scala"
   IO.write(file,
     s"""
        |package com.github.israel.sbt.kafka

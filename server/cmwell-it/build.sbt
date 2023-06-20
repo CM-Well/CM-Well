@@ -32,31 +32,31 @@ libraryDependencies ++= {
     dm("xml-apis", "xml-apis") % "it,test")
 }
 
-logBuffered in IntegrationTest := false
+IntegrationTest / logBuffered := false
 
-fork in IntegrationTest := true
+IntegrationTest / fork := true
 
-javaOptions in IntegrationTest += {
-  val targetDir = (target in IntegrationTest).value
+IntegrationTest / javaOptions += {
+  val targetDir = (IntegrationTest / target).value
   val cmwHome = targetDir / "temp"
   s"-Dcmwell.home=${cmwHome.getAbsolutePath}"
 }
 
-managedResourceDirectories in IntegrationTest ++= Seq(
-  (target in IntegrationTest).value / "conf_files",
-  (packResourceDir in LocalProject("ws")).value.keys.head
+IntegrationTest / managedResourceDirectories ++= Seq(
+  (IntegrationTest / target).value / "conf_files",
+  (LocalProject("ws") / packResourceDir).value.keys.head
 )
 
-//managedResources in IntegrationTest ++= {
+//IntegrationTest / managedResources ++= {
 //  /*val orig = */
-////  val dest = (target in IntegrationTest).value / "conf_files" / "ws" / "application.conf"
+////  val dest = (IntegrationTest / target).value / "conf_files" / "ws" / "application.conf"
 //  //  sbt.IO.copyFile(orig,dest)
 //  //  dest
-//  (configSettingsResource in LocalProject("ws")).value
+//  (LocalProject("ws") / configSettingsResource).value
 //}
 
-unmanagedResources in IntegrationTest += {
-  val cons = (baseDirectory in LocalProject("cons")).value
+IntegrationTest / unmanagedResources += {
+  val cons = (LocalProject("cons") / baseDirectory).value
   cons / "app" / "resources" / "meta_ns_prefixes_snapshot_infotons.nt"
 }
 
@@ -67,9 +67,9 @@ def jps(): Array[(String,String)] =
     .map{case (pid,clazz) => (pid, clazz.trim)}
 
 def installCmwell = Def.taskDyn[Array[(String,String)]] {
-  val targetDir = (target in IntegrationTest).value
+  val targetDir = (IntegrationTest / target).value
   val log = streams.value.log
-  val pe = (peScript in LocalProject("cons")).value
+  val pe = (LocalProject("cons") / peScript).value
   Def.task[Array[(String,String)]] {
     launchCmwell(targetDir,log,pe)
   }.tag(Tags.IntegrationTests)
@@ -87,17 +87,17 @@ def launchCmwell(targetDir: File, log: Logger, pe: File): Array[(String,String)]
 }
 
 
-parallelExecution in Test := true
+Test / parallelExecution := true
 
-testOptions in IntegrationTest ++= {
+IntegrationTest / testOptions ++= {
 
   val log = streams.value.log
-  val pescript = (peScript in LocalProject("cons")).value
+  val pescript = (LocalProject("cons") / peScript).value
 
   var oldJps: Array[(String,String)] = Array.empty
 
   Seq(Tests.Setup(() => {
-    oldJps = launchCmwell((target in IntegrationTest).value,log,pescript)
+    oldJps = launchCmwell((IntegrationTest / target).value,log,pescript)
     log.info("starting tests")
   }),
   Tests.Cleanup(() => {
@@ -118,9 +118,9 @@ testOptions in IntegrationTest ++= {
   }))
 }
 
-itScalastyle in ThisProject := (scalastyle in ThisProject).in(IntegrationTest).toTask("").value
+ThisProject / itScalastyle := (ThisProject / IntegrationTest / scalastyle).toTask("").value
 
-test in IntegrationTest := Def.task {
+IntegrationTest / test := Def.task {
   itScalastyle.value
-  (test in IntegrationTest).value
+  (IntegrationTest / test).value
 }.tag(Tags.ES,Tags.Cassandra,Tags.Kafka,Tags.Grid).value

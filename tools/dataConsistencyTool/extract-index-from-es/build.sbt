@@ -20,12 +20,12 @@ libraryDependencies ++= Seq(
   "org.apache.parquet" % "parquet-avro" % "1.9.0",
   "org.apache.hadoop" % "hadoop-common" % "2.6.5")
 
-mainClass in assembly := Some("cmwell.analytics.main.DumpUuidOnlyFromEs")
+assembly / mainClass := Some("cmwell.analytics.main.DumpUuidOnlyFromEs")
 
-assemblyMergeStrategy in assembly :=  {
+assembly / assemblyMergeStrategy :=  {
   case PathList("org", "apache", "commons", xs @ _*) => MergeStrategy.last
   case x =>
-    val oldStrategy = (assemblyMergeStrategy in assembly).value
+    val oldStrategy = (assembly / assemblyMergeStrategy).value
     oldStrategy(x)
 }
 

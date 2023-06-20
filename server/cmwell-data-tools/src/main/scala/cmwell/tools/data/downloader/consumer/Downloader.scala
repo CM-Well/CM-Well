@@ -488,7 +488,7 @@ class Downloader(
       }
 
       def extractPathTsv(data: ByteString) =
-        data.utf8String.lines.map(_.takeWhile(_ != '\t')).toSeq
+        data.utf8String.linesIterator.map(_.takeWhile(_ != '\t')).toSeq
 
       format match {
         case "json" =>
@@ -665,7 +665,7 @@ class Downloader(
       }
 
       def extractUuidsTsv(data: ByteString) =
-        data.utf8String.lines
+        data.utf8String.linesIterator
           .map(
             _.dropWhile(_ != '\t')
               .drop(1)

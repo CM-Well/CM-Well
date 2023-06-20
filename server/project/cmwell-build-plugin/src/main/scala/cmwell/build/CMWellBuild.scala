@@ -234,11 +234,11 @@ object CMWellBuild extends AutoPlugin {
 
 	override def projectSettings = Seq(
 		scalastyleFailOnError := false,
-		testScalastyle in ThisProject := (scalastyle in ThisProject).in(Test).toTask("").value,
-		(test in Test) := ((test in Test) dependsOn testScalastyle).value,
-		compileScalastyle in ThisProject := (scalastyle in ThisProject).in(Compile).toTask("").value,
-		(compile in Compile) := ((compile in Compile) dependsOn compileScalastyle).value,
-		(compile in Compile) := ((compile in Compile) dependsOn versionCheck).value,
+		ThisProject / testScalastyle := (ThisProject / Test / scalastyle).toTask("").value,
+		Test / test := ((test in Test) dependsOn testScalastyle).value,
+		ThisProject / compileScalastyle := (ThisProject / Compile / scalastyle).toTask("").value,
+		Compile / compile := ((Compile / compile) dependsOn compileScalastyle).value,
+		Compile / compile := ((Compile / compile) dependsOn versionCheck).value,
 		logLevel in (scalastyle in Compile) := Level.Warn,
 		//scalafmtOnCompile := true,
 		//doctestWithDependencies := false,

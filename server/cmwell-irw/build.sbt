@@ -15,12 +15,12 @@ libraryDependencies ++= {
 
 cassandraVersion := Versions.cassandra
 	
-cassandraCqlInit := ((resourceDirectory in Test).value / "cassandra-cql-test-commands.txt").getAbsolutePath
+cassandraCqlInit := ((Test / resourceDirectory).value / "cassandra-cql-test-commands.txt").getAbsolutePath
 
 /* - It was used when using the cassandra plugin - not needed anymore when using docker testing
-test in Test := Def.taskDyn {
+Test / test := Def.taskDyn {
   val a: Task[String] = startCassandra.taskValue
-  val b: Task[Unit] = (test in Test).taskValue
+  val b: Task[Unit] = (Test / test).taskValue
   val c: Task[Unit] = stopCassandra.taskValue
   Def.task {
     ((a doFinally b) doFinally c).value

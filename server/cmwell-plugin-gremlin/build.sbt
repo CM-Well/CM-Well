@@ -12,7 +12,7 @@ libraryDependencies ++= {
     dm("com.tinkerpop.gremlin", "gremlin-groovy"))
 }
 
-assemblyMergeStrategy in assembly := {
+assembly / assemblyMergeStrategy := {
   case "META-INF/MANIFEST.MF" => MergeStrategy.discard
   case _ => MergeStrategy.first
 }

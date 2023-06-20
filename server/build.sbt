@@ -4,10 +4,10 @@ import cmwell.build.Versions
 
 name := "server"
 description := "CM-Well Project"
-organization in Global := "cmwell"                                           //see project/build.sbt commented out code,
+Global / organization := "cmwell"                                            //see project/build.sbt commented out code,
                                                                              // to understand this commented out code:
-//version in Global := "1.2." + sys.env.getOrElse("BUILD_NUMBER","x-SNAPSHOT") //build.JenkinsEnv.buildNumber.getOrElse("x-SNAPSHOT")
-shellPrompt in ThisBuild := { state => Project.extract(state).currentRef.project + "> " }
+//Global / version := "1.2." + sys.env.getOrElse("BUILD_NUMBER","x-SNAPSHOT") //build.JenkinsEnv.buildNumber.getOrElse("x-SNAPSHOT")
+ThisBuild / shellPrompt := { state => Project.extract(state).currentRef.project + "> " }
 
 def refreshVersion = Command.command("refreshVersion") { state =>
   val extracted = Project extract state
@@ -37,7 +37,7 @@ ThisBuild / version ~= stripTime
 ThisBuild / dynver ~= stripTime
 
 //Do not change the format of the line below, it will affect (badly) the CI-CD in github
-scalaVersion in Global := "2.13.1"
+Global / scalaVersion := "2.13.1"
 
 //javacOptions ++= Seq("-source", "1.8", "-target", "1.8", "-Xlint")
 initialize := {
@@ -46,11 +46,11 @@ initialize := {
   if (SemVer(sys.props("java.specification.version")) < SemVer("1.8"))
     sys.error("Java 8 or higher is required for CM-Well!")
 }
-updateOptions in Global := updateOptions.in(Global).value.withCachedResolution(true).withCircularDependencyLevel(CircularDependencyLevel.Error)
-scalacOptions in Global ++= Seq("-unchecked", "-feature", "-deprecation", "-target:jvm-1.8")
-cancelable in Global := true
+Global / updateOptions := (Global / updateOptions).value.withCachedResolution(true).withCircularDependencyLevel(CircularDependencyLevel.Error)
+Global / scalacOptions ++= Seq("-unchecked", "-feature", "-deprecation", "-target:jvm-1.8")
+Global / cancelable := true
 
-dependenciesManager in Global := {
+Global / dependenciesManager := {
   case ("ch.qos.logback","logback-classic")                        => "ch.qos.logback" % "logback-classic" % "1.2.3"
   case ("com.avast","bytecompressor")                              => "com.avast" %% "bytecompressor"         % "1.2.2"
   case ("com.avast","bytecompressor-huffman")                      => "com.avast" %% "bytecompressor-huffman" % "1.2.2"
@@ -79,7 +79,7 @@ dependenciesManager in Global := {
   case ("com.typesafe.akka", "akka-stream-contrib")                => "com.typesafe.akka" %% "akka-stream-contrib" % "0.10"
   case ("com.typesafe.akka", "akka-http")                          => "com.typesafe.akka" %% "akka-http" % "10.1.11"
   case ("com.typesafe.akka",art)                                   => "com.typesafe.akka" %% art % "2.5.26"
-  case ("com.typesafe.play", "twirl-api")                          => "com.typesafe.play" %% "twirl-api" % "1.3.13"
+  case ("com.typesafe.play", "twirl-api")                          => "com.typesafe.play" %% "twirl-api" % "1.5.2"
   case ("com.typesafe.play", "play-json")                          => "com.typesafe.play" %% "play-json" % "2.7.4"
   case ("com.typesafe.play", art)                                  => "com.typesafe.play" %% art % Versions.play
   case ("com.twitter","chill-akka")                                => "com.twitter" %% "chill-akka" % "0.5.2"
@@ -172,7 +172,7 @@ dependenciesManager in Global := {
   case ("org.scalatest","scalatest")                               => "org.scalatest" %% "scalatest" % "3.0.8"
   case ("org.scala-lang.modules", "scala-parser-combinators")      => "org.scala-lang.modules" %% "scala-parser-combinators" % "1.0.4"
   case ("org.scala-lang.modules", "scala-parallel-collections")    => "org.scala-lang.modules" %% "scala-parallel-collections" % "0.2.0"
-  case ("org.scala-lang.modules", "scala-xml")                     => "org.scala-lang.modules" %% "scala-xml" % "1.2.0"
+  case ("org.scala-lang.modules", "scala-xml")                     => "org.scala-lang.modules" %% "scala-xml" % "2.1.0"
   case ("org.slf4j",art)                                           => "org.slf4j" % art % "1.7.28"
   case ("org.xerial.snappy","snappy-java")                         => "org.xerial.snappy" % "snappy-java" % "1.1.2.4"
   case ("org.yaml","snakeyaml")                                    => "org.yaml" % "snakeyaml" % "1.25"
@@ -183,7 +183,7 @@ dependenciesManager in Global := {
   case ("org.scala-lang.modules", "scala-collection-compat")       => "org.scala-lang.modules" %% "scala-collection-compat" % "2.1.3"
 }
 
-//dependencyOverrides in Global ++= {
+//Global / dependencyOverrides ++= {
 //  val dm = dependenciesManager.value
 //  Set(
 //    dm("ch.qos.logback", "logback-classic"),
@@ -210,9 +210,9 @@ dependenciesManager in Global := {
 //  )
 //}
 
-excludeDependencies in ThisBuild += "org.slf4j" % "slf4j-jdk14"
+ThisBuild / excludeDependencies += "org.slf4j" % "slf4j-jdk14"
 
-//conflictManager in Global := ConflictManager.strict //TODO: ideally we should use this to prevent jar hell (conflicts will explode to our faces explicitly at update phase)
+//Global / conflictManager := ConflictManager.strict //TODO: ideally we should use this to prevent jar hell (conflicts will explode to our faces explicitly at update phase)
 
 printDate := streams.value.log.info("date: " + org.joda.time.DateTime.now().toString())
 
@@ -240,14 +240,14 @@ lazy val consIt        = (project in file("cmwell-it")).enablePlugins(CMWellBuil
   // scalastyle settings to enable it for integration tests:
   // this is low-level and should be updated on every version upgrade of the plugin (if needed)
   Seq(
-    (scalastyleConfig in IntegrationTest) := (scalastyleConfig in scalastyle).value,
-    (scalastyleConfigUrl in IntegrationTest) := None,
-    (scalastyleConfigUrlCacheFile in IntegrationTest) := "scalastyle-it-config.xml",
-    (scalastyleConfigRefreshHours in IntegrationTest) := (scalastyleConfigRefreshHours in scalastyle).value,
-    (scalastyleTarget in IntegrationTest) := target.value / "scalastyle-it-result.xml",
-    (scalastyleFailOnError in IntegrationTest) := (scalastyleFailOnError in scalastyle).value,
-    (scalastyleFailOnWarning in IntegrationTest) := (scalastyleFailOnWarning in scalastyle).value,
-    (scalastyleSources in IntegrationTest) := (unmanagedSourceDirectories in IntegrationTest).value,
+    (IntegrationTest / scalastyleConfig) := (scalastyle / scalastyleConfig).value,
+    (IntegrationTest / scalastyleConfigUrl) := None,
+    (IntegrationTest / scalastyleConfigUrlCacheFile) := "scalastyle-it-config.xml",
+    (IntegrationTest / scalastyleConfigRefreshHours) := (scalastyle / scalastyleConfigRefreshHours).value,
+    (IntegrationTest / scalastyleTarget) := target.value / "scalastyle-it-result.xml",
+    (IntegrationTest / scalastyleFailOnError) := (scalastyle / scalastyleFailOnError).value,
+    (IntegrationTest / scalastyleFailOnWarning) := (scalastyle / scalastyleFailOnWarning).value,
+    (IntegrationTest / scalastyleSources) := (IntegrationTest / unmanagedSourceDirectories).value,
   ) ++ Project.inConfig(IntegrationTest)(ScalastylePlugin.rawScalastyleSettings()))                                 dependsOn(domain, common % "compile->compile;it->domainUtil", ws) configs(IntegrationTest)
 lazy val ctrl          = (project in file("cmwell-controller")).enablePlugins(CMWellBuild)                          dependsOn(grid, common)
 lazy val dc            = (project in file("cmwell-dc")).enablePlugins(CMWellBuild, JavaAppPackaging)                dependsOn(tracking, ctrl, sparqlAgent)
@@ -263,16 +263,16 @@ lazy val tracking      = (project in file("cmwell-tracking")).enablePlugins(CMWe
 lazy val ws            = (project in file("cmwell-ws")).enablePlugins(CMWellBuild, PlayScala, SbtTwirl, PlayNettyServer)
                                                        .disablePlugins(PlayAkkaHttpServer)                          dependsOn(domain, common, formats, fts, irw, rts, ctrl, stortill, zstore, tracking)
 
-testOptions in Test in ThisBuild += Tests.Argument(TestFrameworks.ScalaTest, "-oD")
-testOptions in Test in ThisBuild += Tests.Argument(TestFrameworks.ScalaTest, "-W", "10", "2")
-testOptions in IntegrationTest in ThisBuild += Tests.Argument(TestFrameworks.ScalaTest, "-oD")
-testOptions in IntegrationTest in ThisBuild += Tests.Argument(TestFrameworks.ScalaTest, "-W", "10", "2")
+ThisBuild / Test / testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-oD")
+ThisBuild / Test / testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-W", "10", "2")
+ThisBuild / IntegrationTest / testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-oD")
+ThisBuild / IntegrationTest / testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-W", "10", "2")
 
 addCommandAlias("fullTest","; Test/test ; IntegrationTest/test")
 
 addCommandAlias("ccft","; clean ; compile ; fullTest")
 
-credentials in Global ~= {
+Global / credentials ~= {
   seq => {
     val credentials = for {
       username <- sys.env.get("CMWELL_NEXUS_USERNAME")
@@ -287,7 +287,7 @@ credentials in Global ~= {
   }
 }
 
-publishTo in Global := {
+Global / publishTo := {
   sys.env.get("CMWELL_NEXUS_HOST").map { nexus =>
     if (version.value.trim.endsWith("SNAPSHOT"))
       "CMWell Snapshots" at nexus + "snapshots"

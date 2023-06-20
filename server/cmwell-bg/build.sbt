@@ -38,7 +38,7 @@ zookeeperVersion := Versions.zookeeper
 
 cassandraCliInit := "NO_CLI_COMMANDS_SUPPLIED"
 
-cassandraCqlInit := ((resourceDirectory in Test).value / "cassandra-cql-commands.txt").absolutePath
+cassandraCqlInit := ((Test / resourceDirectory).value / "cassandra-cql-commands.txt").absolutePath
 
 val startCassandraAndKafka = Def.task[Unit] {
   Def.task(startKafka.value).value
@@ -50,13 +50,13 @@ val stopCassandraAndKafka = Def.task[Unit] {
   Def.task(stopKafka.value).value
 }
 
-//test in Test := Def.taskDyn {
+//Test / test := Def.taskDyn {
 //  val a: Task[Unit] = startCassandraAndKafka.taskValue
-//  val b: Task[Unit] = (test in Test).taskValue
+//  val b: Task[Unit] = (Test / test).taskValue
 //  val c: Task[Unit] = stopCassandraAndKafka.taskValue
 //  Def.task {
 //    ((a doFinally b) doFinally c).value
 //  }
 //}.tag(Tags.ES,Tags.Cassandra,Tags.Grid,Tags.Kafka).value
 
-unmanagedResources in Test += packResourceDir.value.keys.head / "logback.xml"
+Test / unmanagedResources += packResourceDir.value.keys.head / "logback.xml"

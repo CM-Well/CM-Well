@@ -20,7 +20,7 @@ name := "cmwell-cons"
 
 unmanagedResources := Seq()
 
-resourceGenerators in Compile += Def.task {
+Compile / resourceGenerators += Def.task {
   val file = baseDirectory.value / "app" / "cmwell.properties"
   val gitCommitVersion = s""""git_commit_version": "${Process("git rev-parse HEAD").lineStream.head}""""
   val buildRelease = s""""cm-well_release": "${cmwell.build.CMWellCommon.release}""""
@@ -87,9 +87,9 @@ getExternalComponents := {
 getData := {
   val logger = streams.value
   val baseDir = baseDirectory.value
-  val spaDir = (dataFolder in LocalProject("spa") in Compile).value
+  val spaDir = (LocalProject("spa") / Compile / dataFolder).value
   val docsDir = baseDir / ".." / ".." / "docs"
-  val sysDir = (sourceDirectory in LocalProject("ws") in Compile).value / ".." / "public" / "sys"
+  val sysDir = (LocalProject("ws") / Compile / sourceDirectory).value / ".." / "public" / "sys"
 
   logger.log.info(sysDir.absolutePath)
 
@@ -110,7 +110,7 @@ getData := {
 getCons := {
   val str = streams.value
   val bd = baseDirectory.value
-  val cons = (packageBin in Compile).value
+  val cons = (Compile / packageBin).value
 
   str.log.info(s"cons file to copy is: ${cons.getAbsolutePath}")
   val destination = bd / "app" / "components" / cons.getName
@@ -123,7 +123,7 @@ getCons := {
 getWs := {
   val str = streams.value
   val bd = baseDirectory.value
-  val ws = (packageBin in LocalProject("ws") in Universal).value
+  val ws = (LocalProject("ws") / Universal / packageBin).value
 
   //make sure to also generate app data & docs
   getData.value
@@ -139,7 +139,7 @@ getWs := {
 //getBg := {
 //  val str = streams.value
 //  val bd = baseDirectory.value
-////  val batch = (oneJar in LocalProject("batch") in oneJar).value
+////  val batch = (LocalProject("batch") / oneJar / oneJar).value
 //
 //  str.log.info(s"bg file to copy is: ${batch.getAbsolutePath}")
 //  val destination = bd / "app" / "components" / batch.getName
@@ -266,11 +266,11 @@ getLib := {
   if(!lib.exists()) lib.mkdir()
   if(!dependencies.exists()) dependencies.mkdir() else sbt.IO.delete(dependencies.listFiles())
 
-  packProject("ctrl",(pack in LocalProject("ctrl") in pack).value,bd, bd / "app" / "conf" / "ctrl",logger)
-  packProject("dc",(pack in LocalProject("dc") in pack).value,bd, bd / "app" / "conf" / "dc",logger)
-  packProject("ws",(pack in LocalProject("ws") in pack).value,bd, bd / "app" / "conf" / "ws",logger)
-  packProject("bg",(pack in LocalProject("bg") in pack).value,bd, bd / "app" / "conf" / "bg",logger)
-  packCons((pack in LocalProject("cons") in pack).value, getCons.value , bd)
+  packProject("ctrl",(LocalProject("ctrl") / pack / pack).value,bd, bd / "app" / "conf" / "ctrl",logger)
+  packProject("dc",(LocalProject("dc") / pack / pack).value,bd, bd / "app" / "conf" / "dc",logger)
+  packProject("ws",(LocalProject("ws") / pack / pack).value,bd, bd / "app" / "conf" / "ws",logger)
+  packProject("bg",(LocalProject("bg") / pack / pack).value,bd, bd / "app" / "conf" / "bg",logger)
+  packCons((LocalProject("cons") / pack / pack).value, getCons.value , bd)
 
   lib
 }
@@ -278,7 +278,7 @@ getLib := {
 packageCMWell := {
   val str = streams.value
   val bd = baseDirectory.value
-  val cp = (dependencyClasspath in Compile).value
+  val cp = (Compile / dependencyClasspath).value
 
   getGremlin.value
 
@@ -311,11 +311,11 @@ uploadInitContent := {
   baseDirectory.value / "app" / "upload-content.sh"
 }
 
-test in Test := {
+Test / test := {
   peScript.value
-  (test in Test).value
+  (Test / test).value
 }//.tag(CMWellTags.Grid)
 
-fork in Test := true
+Test / fork := true
 
-baseDirectory in Test := file("cmwell-cons/app")
+Test / baseDirectory := file("cmwell-cons/app")

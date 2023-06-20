@@ -49,10 +49,10 @@ case class TakeWeighted[T](maxWeight: Long, inclusive: Boolean = true, costFn: T
             completeStage()
           }
         } catch {
-          case NonFatal(ex) ⇒
+          case NonFatal(ex) =>
             decider(ex) match {
-              case Supervision.Stop ⇒ failStage(ex)
-              case _ ⇒ pull(in)
+              case Supervision.Stop => failStage(ex)
+              case _ => pull(in)
             }
         }
       }

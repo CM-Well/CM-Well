@@ -58,9 +58,9 @@ libraryDependencies ++= {
 }
 
 //sbt native packager configuration
-mappings in Universal += (packResourceDir.value.keys.head / "logback.xml") -> "conf/logback.xml"
-scriptClasspath in bashScriptDefines ~= (cp => "../conf" +: cp)
-mainClass in Compile := Some("cmwell.dc.stream.MainStandAlone")
+Universal / mappings += (packResourceDir.value.keys.head / "logback.xml") -> "conf/logback.xml"
+bashScriptDefines / scriptClasspath ~= (cp => "../conf" +: cp)
+Compile / mainClass := Some("cmwell.dc.stream.MainStandAlone")
 val jvmOptsForDcStandAloneUsingNativePackager = Seq(
 	"-J-Xmx1024M",
 	"-J-XX:+UseG1GC",
@@ -83,6 +83,6 @@ val jvmOptsForDcStandAloneUsingNativePackager = Seq(
 	"-J-XX:NumberOfGCLogFiles=9",
 	"-J-XX:GCLogFileSize=10M"
 )
-javaOptions in Universal ++= jvmOptsForDcStandAloneUsingNativePackager
+Universal / javaOptions ++= jvmOptsForDcStandAloneUsingNativePackager
 
-//unmanagedResources in Test += packResourceDir.value.keys.head / "application.conf"
+//Test / unmanagedResources += packResourceDir.value.keys.head / "application.conf"

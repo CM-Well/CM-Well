@@ -17,9 +17,7 @@ package cmwell.util.loading
 import java.io.{File, InputStream}
 import java.net.{URL, URLClassLoader}
 
-// scalastyle:off
-import sun.misc.CompoundEnumeration
-// scalastyle:on
+import scala.jdk.CollectionConverters._
 import scala.util.{Failure, Success, Try}
 
 /**
@@ -61,14 +59,6 @@ class ChildFirstURLClassLoader(urls: Array[URL], parent: ClassLoader, except: Se
   override def getResource(name: String): URL = findResource(name) match {
     case null => super.getResource(name)
     case u    => u
-  }
-
-  override def getResources(name: String): java.util.Enumeration[URL] = {
-    val parent = getParent
-    val localUrls = findResources(name)
-    val parentUrls: java.util.Enumeration[URL] =
-      if (parent != null) parent.getResources(name) else java.util.Collections.emptyEnumeration()
-    new CompoundEnumeration(Array(localUrls, parentUrls))
   }
 
   override def getResourceAsStream(name: String): InputStream = {

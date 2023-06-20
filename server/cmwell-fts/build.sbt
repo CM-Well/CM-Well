@@ -1,6 +1,6 @@
 name := "cmwell-fts-ng"
 
-//Keys.fork in Test := true //the test will run in a spawned JVM (default is to run in the same JVM) -> this is because the tests use cmwell.util.jmx.package$.jmxRegister
+//Test / Keys.fork := true //the test will run in a spawned JVM (default is to run in the same JVM) -> this is because the tests use cmwell.util.jmx.package$.jmxRegister
 
 libraryDependencies ++= {
 	val dm = dependenciesManager.value
@@ -17,4 +17,4 @@ libraryDependencies ++= {
     dm("net.lingala.zip4j", "zip4j") % Test)
 }
 
-test in Test := Def.task((test in Test).value).tag(cmwell.build.CMWellCommon.Tags.ES).value
+Test / test := Def.task((Test / test).value).tag(cmwell.build.CMWellCommon.Tags.ES).value

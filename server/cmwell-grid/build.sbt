@@ -11,7 +11,7 @@ libraryDependencies ++= {
   )
 }
 
-assemblyMergeStrategy in assembly := {
+assembly / assemblyMergeStrategy := {
   case PathList("bus-extensions.txt") => MergeStrategy.discard
   case PathList("application.conf") => MergeStrategy.concat
   case PathList("reference.conf") => MergeStrategy.concat
@@ -23,13 +23,13 @@ assemblyMergeStrategy in assembly := {
   case _ => MergeStrategy.first
 }
 
-test in assembly := {}
+assembly / test := {}
 
-fork in Test := true
+Test / fork := true
 
-javaOptions in Test ++= Seq(
-  s"-Dgrid.test.assembly-jar-name=${(assembly in Test).value.getAbsolutePath}",
+Test / javaOptions ++= Seq(
+  s"-Dgrid.test.assembly-jar-name=${(Test / assembly).value.getAbsolutePath}",
   s"-Dgrid.test.root-dir=${target.value}"
 )
 
-test in Test := Def.task((test in Test).value).tag(cmwell.build.CMWellCommon.Tags.Grid).value
+Test / test := Def.task((Test / test).value).tag(cmwell.build.CMWellCommon.Tags.Grid).value
