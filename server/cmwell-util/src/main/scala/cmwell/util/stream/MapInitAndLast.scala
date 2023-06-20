@@ -19,7 +19,7 @@ import akka.stream._
 import akka.stream.stage.{GraphStage, GraphStageLogic, InHandler, OutHandler}
 import scala.util.control.NonFatal
 
-class MapInitAndLast[In, Out](init: In ⇒ Out, last: In ⇒ Out) extends GraphStage[FlowShape[In, Out]] {
+class MapInitAndLast[In, Out](init: In => Out, last: In => Out) extends GraphStage[FlowShape[In, Out]] {
   val in: Inlet[In] = Inlet[In]("MapInitAndLast.in")
   val out: Outlet[Out] = Outlet[Out]("MapInitAndLast.out")
   override val shape = FlowShape(in, out)
@@ -33,11 +33,11 @@ class MapInitAndLast[In, Out](init: In ⇒ Out, last: In ⇒ Out) extends GraphS
 
     override def preStart(): Unit = tryPull(in)
 
-    def pushWith(elem: In, f: In ⇒ Out): Unit = try { push(out, f(elem)) } catch {
-      case NonFatal(ex) ⇒
+    def pushWith(elem: In, f: In => Out): Unit = try { push(out, f(elem)) } catch {
+      case NonFatal(ex) =>
         decider(ex) match {
-          case Supervision.Stop ⇒ failStage(ex)
-          case _ ⇒ pull(in)
+          case Supervision.Stop => failStage(ex)
+          case _ => pull(in)
         }
     }
 

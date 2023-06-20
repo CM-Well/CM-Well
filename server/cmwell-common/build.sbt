@@ -52,7 +52,7 @@ libraryDependencies ++= {
   )
 }
 
-//sourceGenerators in Compile += buildInfo.taskValue
+//Compile / sourceGenerators += buildInfo.taskValue
 
 val encodingVersion = settingKey[String]("sets encodingVersion number")
 
@@ -80,8 +80,8 @@ buildInfoKeys := Seq[BuildInfoKey](
   "release" -> cmwell.build.CMWellCommon.release
 )
 
-sourceGenerators in Test += Def.task {
-  val file = (sourceManaged in Test).value / "cmwell" / "util" / "build" / "JsonSerializer.scala"
+Test / sourceGenerators += Def.task {
+  val file = (Test / sourceManaged).value / "cmwell" / "util" / "build" / "JsonSerializer.scala"
   IO.write(file,
     s"""
        |package cmwell.common.build

@@ -26,7 +26,7 @@ import scala.util._
   * Date: 9/4/17
   * Time: 1:20 PM
   */
-class GlobalVarStateHandler[State](setters: Int, getters: Int)(initialAsync: () ⇒ Future[State])(
+class GlobalVarStateHandler[State](setters: Int, getters: Int)(initialAsync: () => Future[State])(
   implicit ec: ExecutionContext
 ) extends GraphStage[SingleTypeAmorphousShape[State, State]] {
   require(setters >= 0 && getters >= 0 && setters + getters > 0,
@@ -115,9 +115,9 @@ class GlobalVarStateHandler[State](setters: Int, getters: Int)(initialAsync: () 
     override def preStart(): Unit = {
 
       val acb = getAsyncCallback[Try[State]] {
-        case Failure(ex) if state != null && hasActiveSetters ⇒ replaceHandlers
-        case Failure(ex) ⇒ failStage(ex)
-        case Success(initialState) ⇒ {
+        case Failure(ex) if state != null && hasActiveSetters => replaceHandlers
+        case Failure(ex) => failStage(ex)
+        case Success(initialState) => {
 
           if (state == null)
             state = initialState

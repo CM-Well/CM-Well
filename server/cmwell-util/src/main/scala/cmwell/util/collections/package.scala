@@ -272,8 +272,8 @@ package object collections {
     * import cmwell.util.collections.Unfolder._
     *
     * scala> unfold(Array.newBuilder[Int])(0 → 1){
-    *      |   case (a,b) if a > 1000 ⇒ None
-    *      |   case (a,b) ⇒ Some((b→(a+b))→a)
+    *      |   case (a,b) if a > 1000 => None
+    *      |   case (a,b) => Some((b→(a+b))→a)
     *      | }
     * res0: Array[Int] = Array(0, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233, 377, 610, 987)
     * }}}

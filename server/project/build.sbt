@@ -8,10 +8,9 @@ libraryDependencies ++=  Seq(
 
 val s = Seq(
   shellPrompt := { s => Project.extract(s).currentProject.id + " > " },
-  scalaVersion := "2.12.10"
 )
 
-sourceGenerators in Compile += Def.task {
+Compile / sourceGenerators += Def.task {
     val file = sourceManaged.value / "cmwell" / "build" / "Versions.scala"
     IO.write(file, s"""
      |package cmwell.build

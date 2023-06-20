@@ -201,7 +201,7 @@ package object string extends LazyLogging {
     val shortDateFormatter = DateTimeFormat.forPattern("yyyy-MM-dd")
     val funcs: Seq[String => Option[DateTime]] =
       Seq(fullDateFormatter.parseDateTime(_), longDateFormatter.parseDateTime(_), shortDateFormatter.parseDateTime(_))
-        .map { f ⇒ (s: String) ⇒
+        .map { f => (s: String) =>
           Try(f(s)).toOption
         }
     funcs.foldLeft(Option.empty[DateTime]) {

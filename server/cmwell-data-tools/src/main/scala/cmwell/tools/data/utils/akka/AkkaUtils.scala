@@ -70,13 +70,13 @@ object AkkaUtils {
 
   def decodeResponse(response: HttpResponse) = {
     val decoder = response.encoding match {
-      case HttpEncodings.gzip ⇒
+      case HttpEncodings.gzip =>
         Gzip
-      case HttpEncodings.deflate ⇒
+      case HttpEncodings.deflate =>
         Deflate
-      case HttpEncodings.identity ⇒
+      case HttpEncodings.identity =>
         NoCoding
-      case HttpEncoding(_) ⇒ ???
+      case HttpEncoding(_) => ???
     }
     decoder.decodeMessage(response)
   }

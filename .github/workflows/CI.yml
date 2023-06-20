@@ -102,7 +102,7 @@ jobs:
     - name: Install Scala
       run: |
         scalaLocation="/home/runner/scala"
-        scalaVersion=$(grep "scalaVersion in Global" /home/runner/work/CM-Well/CM-Well/server/build.sbt | awk '{print $NF}' | tr -d \")
+        scalaVersion=$(grep "Global / scalaVersion" /home/runner/work/CM-Well/CM-Well/server/build.sbt | awk '{print $NF}' | tr -d \")
         if [ ! -d "$scalaLocation/scala-$scalaVersion" ]; then
           echo "Scala does not exist! Going to download"
           mkdir $scalaLocation

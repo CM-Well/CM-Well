@@ -90,11 +90,11 @@ libraryDependencies ++= {
 
 testListeners := Seq.empty[TestReportListener]
 
-javacOptions in Test += "-DftsService.default.timeout=10"
+Test / javacOptions += "-DftsService.default.timeout=10"
 
-mappings in Universal += {
-  val f = (assembly in LocalProject("pluginGremlin")).value
+Universal / mappings += {
+  val f = (LocalProject("pluginGremlin") / assembly).value
   f -> "/plugins/sg-engines/gremlin.jar"
 }
 
-fullClasspath in (Compile,console) += Attributed.blank(sourceDirectory.value / "cws" / "resources")
+Compile / console / fullClasspath += Attributed.blank(sourceDirectory.value / "cws" / "resources")

@@ -51,7 +51,7 @@ trait BatchingExecutor extends Executor {
       _tasksLocal.set(this) // Install ourselves as the current batch
       try processBatch(this)
       catch {
-        case t: Throwable ⇒
+        case t: Throwable =>
           resubmitUnbatched()
           throw t
       } finally _tasksLocal.remove()
@@ -70,7 +70,7 @@ trait BatchingExecutor extends Executor {
       BlockContext.withBlockContext(this) {
         try processBatch(this)
         catch {
-          case t: Throwable ⇒
+          case t: Throwable =>
             resubmitUnbatched()
             throw t
         } finally {
@@ -80,7 +80,7 @@ trait BatchingExecutor extends Executor {
       }
     }
 
-    override def blockOn[T](thunk: ⇒ T)(implicit permission: CanAwait): T = {
+    override def blockOn[T](thunk: => T)(implicit permission: CanAwait): T = {
       // if we know there will be blocking, we don't want to keep tasks queued up because it could deadlock.
       resubmitUnbatched()
       // now delegate the blocking to the previous BC
@@ -95,20 +95,20 @@ trait BatchingExecutor extends Executor {
   override def execute(runnable: Runnable): Unit = {
     if (batchable(runnable)) { // If we can batch the runnable
       _tasksLocal.get match {
-        case null ⇒
+        case null =>
           val newBatch: AbstractBatch = if (resubmitOnBlock) new BlockableBatch() else new Batch()
           newBatch.add(runnable)
           unbatchedExecute(newBatch) // If we aren't in batching mode yet, enqueue batch
-        case batch ⇒ batch.add(runnable) // If we are already in batching mode, add to batch
+        case batch => batch.add(runnable) // If we are already in batching mode, add to batch
       }
     } else unbatchedExecute(runnable) // If not batchable, just delegate to underlying
   }
 
   /** Override this to define which runnables will be batched. */
   def batchable(runnable: Runnable): Boolean = runnable match {
-    case b: Batchable ⇒ b.isBatchable
-    case _: scala.concurrent.OnCompleteRunnable ⇒ true
-    case _ ⇒ false
+    case b: Batchable => b.isBatchable
+    case _: scala.concurrent.OnCompleteRunnable => true
+    case _ => false
   }
 }
 

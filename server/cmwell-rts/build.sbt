@@ -8,4 +8,4 @@ name := "cmwell-rts-ng"
 //  ).map(_.exclude("io.netty","netty"))
 //}
 
-test in Test := Def.task((test in Test).value).tag(cmwell.build.CMWellCommon.Tags.Grid).value
+Test / test := Def.task((Test / test).value).tag(cmwell.build.CMWellCommon.Tags.Grid).value
